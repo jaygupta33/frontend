@@ -1,5 +1,5 @@
-import { TeamOverview } from "@/components/dashboard/team-overview"
+import { TeamOverview } from "@/components/dashboard/team-overview";
 
 export default function TeamPage() {
-  return <TeamOverview />
+  return <TeamOverview />;
 }

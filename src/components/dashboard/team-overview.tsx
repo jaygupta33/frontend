@@ -1,13 +1,13 @@
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
+} from "@/components/ui/dropdown-menu";
 import {
   Plus,
   MoreHorizontal,
@@ -16,20 +16,20 @@ import {
   CheckSquare,
   Clock,
   Users,
-} from "lucide-react"
+} from "lucide-react";
 
 interface TeamMember {
-  id: string
-  name: string
-  email: string
-  role: "ADMIN" | "MEMBER"
-  avatar?: string
-  initials: string
-  joinDate: string
-  activeTasks: number
-  completedTasks: number
-  status: "ONLINE" | "AWAY" | "OFFLINE"
-  workspaces: string[]
+  id: string;
+  name: string;
+  email: string;
+  role: "ADMIN" | "MEMBER";
+  avatar?: string;
+  initials: string;
+  joinDate: string;
+  activeTasks: number;
+  completedTasks: number;
+  status: "ONLINE" | "AWAY" | "OFFLINE";
+  workspaces: string[];
 }
 
 const mockTeamMembers: TeamMember[] = [
@@ -93,29 +93,29 @@ const mockTeamMembers: TeamMember[] = [
     status: "ONLINE",
     workspaces: ["Design Team", "Development"],
   },
-]
+];
 
 function getStatusColor(status: string) {
   switch (status) {
     case "ONLINE":
-      return "bg-chart-1"
+      return "bg-chart-1";
     case "AWAY":
-      return "bg-chart-4"
+      return "bg-chart-4";
     case "OFFLINE":
-      return "bg-muted"
+      return "bg-muted";
     default:
-      return "bg-muted"
+      return "bg-muted";
   }
 }
 
 function getRoleColor(role: string) {
   switch (role) {
     case "ADMIN":
-      return "bg-primary text-primary-foreground"
+      return "bg-primary text-primary-foreground";
     case "MEMBER":
-      return "bg-secondary text-secondary-foreground"
+      return "bg-secondary text-secondary-foreground";
     default:
-      return "bg-muted text-muted-foreground"
+      return "bg-muted text-muted-foreground";
   }
 }
 
@@ -177,11 +177,15 @@ function TeamMemberCard({ member }: { member: TeamMember }) {
           {/* Task Stats */}
           <div className="grid grid-cols-2 gap-4">
             <div className="text-center">
-              <div className="text-2xl font-bold text-chart-2">{member.activeTasks}</div>
+              <div className="text-2xl font-bold text-chart-2">
+                {member.activeTasks}
+              </div>
               <div className="text-xs text-muted-foreground">Active Tasks</div>
             </div>
             <div className="text-center">
-              <div className="text-2xl font-bold text-chart-1">{member.completedTasks}</div>
+              <div className="text-2xl font-bold text-chart-1">
+                {member.completedTasks}
+              </div>
               <div className="text-xs text-muted-foreground">Completed</div>
             </div>
           </div>
@@ -200,13 +204,21 @@ function TeamMemberCard({ member }: { member: TeamMember }) {
         </div>
       </CardContent>
     </Card>
-  )
+  );
 }
 
 export function TeamOverview() {
-  const onlineMembers = mockTeamMembers.filter(m => m.status === "ONLINE").length
-  const totalTasks = mockTeamMembers.reduce((acc, member) => acc + member.activeTasks, 0)
-  const totalCompleted = mockTeamMembers.reduce((acc, member) => acc + member.completedTasks, 0)
+  const onlineMembers = mockTeamMembers.filter(
+    (m) => m.status === "ONLINE"
+  ).length;
+  const totalTasks = mockTeamMembers.reduce(
+    (acc, member) => acc + member.activeTasks,
+    0
+  );
+  const totalCompleted = mockTeamMembers.reduce(
+    (acc, member) => acc + member.completedTasks,
+    0
+  );
 
   return (
     <div className="space-y-6">
@@ -254,7 +266,9 @@ export function TeamOverview() {
         </Card>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Completed Tasks</CardTitle>
+            <CardTitle className="text-sm font-medium">
+              Completed Tasks
+            </CardTitle>
             <CheckSquare className="h-4 w-4 text-chart-1" />
           </CardHeader>
           <CardContent>
@@ -273,5 +287,5 @@ export function TeamOverview() {
         </div>
       </div>
     </div>
-  )
+  );
 }

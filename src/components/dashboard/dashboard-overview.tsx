@@ -1,7 +1,7 @@
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
-import { Progress } from "@/components/ui/progress"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Progress } from "@/components/ui/progress";
 import {
   CheckSquare,
   Clock,
@@ -10,7 +10,7 @@ import {
   Calendar,
   AlertCircle,
   ChevronRight,
-} from "lucide-react"
+} from "lucide-react";
 
 const stats = [
   {
@@ -45,7 +45,7 @@ const stats = [
     icon: TrendingUp,
     color: "text-chart-4",
   },
-]
+];
 
 const recentTasks = [
   {
@@ -84,7 +84,7 @@ const recentTasks = [
     assignee: "David Wilson",
     dueDate: "2025-09-05",
   },
-]
+];
 
 const upcomingDeadlines = [
   {
@@ -105,31 +105,31 @@ const upcomingDeadlines = [
     dueDate: "Sep 8",
     priority: "MEDIUM",
   },
-]
+];
 
 function getStatusColor(status: string) {
   switch (status) {
     case "TODO":
-      return "bg-muted text-muted-foreground"
+      return "bg-muted text-muted-foreground";
     case "IN_PROGRESS":
-      return "bg-chart-2 text-white"
+      return "bg-chart-2 text-white";
     case "DONE":
-      return "bg-chart-1 text-white"
+      return "bg-chart-1 text-white";
     default:
-      return "bg-muted text-muted-foreground"
+      return "bg-muted text-muted-foreground";
   }
 }
 
 function getPriorityColor(priority: string) {
   switch (priority) {
     case "HIGH":
-      return "bg-destructive text-destructive-foreground"
+      return "bg-destructive text-destructive-foreground";
     case "MEDIUM":
-      return "bg-chart-4 text-white"
+      return "bg-chart-4 text-white";
     case "LOW":
-      return "bg-muted text-muted-foreground"
+      return "bg-muted text-muted-foreground";
     default:
-      return "bg-muted text-muted-foreground"
+      return "bg-muted text-muted-foreground";
   }
 }
 
@@ -138,7 +138,9 @@ export function DashboardOverview() {
     <div className="space-y-6">
       {/* Welcome Section */}
       <div className="flex flex-col gap-2">
-        <h1 className="text-3xl font-bold tracking-tight">Welcome back, John!</h1>
+        <h1 className="text-3xl font-bold tracking-tight">
+          Welcome back, John!
+        </h1>
         <p className="text-muted-foreground">
           Here's what's happening with your projects today.
         </p>
@@ -149,13 +151,16 @@ export function DashboardOverview() {
         {stats.map((stat) => (
           <Card key={stat.title}>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">{stat.title}</CardTitle>
+              <CardTitle className="text-sm font-medium">
+                {stat.title}
+              </CardTitle>
               <stat.icon className={`h-4 w-4 ${stat.color}`} />
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">{stat.value}</div>
               <p className="text-xs text-muted-foreground">
-                <span className="text-chart-1">↗ {stat.change}</span> from last week
+                <span className="text-chart-1">↗ {stat.change}</span> from last
+                week
               </p>
             </CardContent>
           </Card>
@@ -221,7 +226,9 @@ export function DashboardOverview() {
                 >
                   <div className="space-y-1">
                     <p className="font-medium leading-none">{item.task}</p>
-                    <p className="text-sm text-muted-foreground">{item.project}</p>
+                    <p className="text-sm text-muted-foreground">
+                      {item.project}
+                    </p>
                   </div>
                   <div className="flex items-center gap-2">
                     <div className="text-right">
@@ -290,5 +297,5 @@ export function DashboardOverview() {
         </CardContent>
       </Card>
     </div>
-  )
+  );
 }

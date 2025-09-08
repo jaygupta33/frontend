@@ -1,14 +1,14 @@
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
-import { Progress } from "@/components/ui/progress"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Progress } from "@/components/ui/progress";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
+} from "@/components/ui/dropdown-menu";
 import {
   Plus,
   MoreHorizontal,
@@ -17,30 +17,31 @@ import {
   CheckSquare,
   Clock,
   ChevronRight,
-} from "lucide-react"
+} from "lucide-react";
 
 interface Project {
-  id: string
-  name: string
-  description: string
-  status: "ACTIVE" | "COMPLETED" | "ON_HOLD"
-  progress: number
-  totalTasks: number
-  completedTasks: number
-  dueDate: string
+  id: string;
+  name: string;
+  description: string;
+  status: "ACTIVE" | "COMPLETED" | "ON_HOLD";
+  progress: number;
+  totalTasks: number;
+  completedTasks: number;
+  dueDate: string;
   team: {
-    name: string
-    avatar?: string
-    initials: string
-  }[]
-  priority: "LOW" | "MEDIUM" | "HIGH"
+    name: string;
+    avatar?: string;
+    initials: string;
+  }[];
+  priority: "LOW" | "MEDIUM" | "HIGH";
 }
 
 const mockProjects: Project[] = [
   {
     id: "1",
     name: "Website Redesign",
-    description: "Complete overhaul of the company website with modern design and improved UX",
+    description:
+      "Complete overhaul of the company website with modern design and improved UX",
     status: "ACTIVE",
     progress: 75,
     totalTasks: 12,
@@ -99,31 +100,31 @@ const mockProjects: Project[] = [
     ],
     priority: "LOW",
   },
-]
+];
 
 function getStatusColor(status: string) {
   switch (status) {
     case "ACTIVE":
-      return "bg-chart-2 text-white"
+      return "bg-chart-2 text-white";
     case "COMPLETED":
-      return "bg-chart-1 text-white"
+      return "bg-chart-1 text-white";
     case "ON_HOLD":
-      return "bg-muted text-muted-foreground"
+      return "bg-muted text-muted-foreground";
     default:
-      return "bg-muted text-muted-foreground"
+      return "bg-muted text-muted-foreground";
   }
 }
 
 function getPriorityColor(priority: string) {
   switch (priority) {
     case "HIGH":
-      return "bg-destructive text-destructive-foreground"
+      return "bg-destructive text-destructive-foreground";
     case "MEDIUM":
-      return "bg-chart-4 text-white"
+      return "bg-chart-4 text-white";
     case "LOW":
-      return "bg-muted text-muted-foreground"
+      return "bg-muted text-muted-foreground";
     default:
-      return "bg-muted text-muted-foreground"
+      return "bg-muted text-muted-foreground";
   }
 }
 
@@ -164,7 +165,9 @@ function ProjectCard({ project }: { project: Project }) {
           </div>
           <Progress value={project.progress} className="h-2" />
           <div className="flex items-center justify-between text-xs text-muted-foreground">
-            <span>{project.completedTasks} of {project.totalTasks} tasks completed</span>
+            <span>
+              {project.completedTasks} of {project.totalTasks} tasks completed
+            </span>
           </div>
         </div>
 
@@ -173,7 +176,10 @@ function ProjectCard({ project }: { project: Project }) {
           <Badge className={getStatusColor(project.status)}>
             {project.status.replace("_", " ")}
           </Badge>
-          <Badge variant="outline" className={getPriorityColor(project.priority)}>
+          <Badge
+            variant="outline"
+            className={getPriorityColor(project.priority)}
+          >
             {project.priority} PRIORITY
           </Badge>
         </div>
@@ -184,7 +190,10 @@ function ProjectCard({ project }: { project: Project }) {
             <Users className="h-4 w-4 text-muted-foreground" />
             <div className="flex -space-x-2">
               {project.team.slice(0, 3).map((member) => (
-                <Avatar key={member.name} className="h-6 w-6 border-2 border-background">
+                <Avatar
+                  key={member.name}
+                  className="h-6 w-6 border-2 border-background"
+                >
                   <AvatarImage src={member.avatar} />
                   <AvatarFallback className="text-xs">
                     {member.initials}
@@ -213,12 +222,14 @@ function ProjectCard({ project }: { project: Project }) {
         </Button>
       </CardContent>
     </Card>
-  )
+  );
 }
 
 export function ProjectOverview() {
-  const activeProjects = mockProjects.filter(p => p.status === "ACTIVE")
-  const completedProjects = mockProjects.filter(p => p.status === "COMPLETED")
+  const activeProjects = mockProjects.filter((p) => p.status === "ACTIVE");
+  const completedProjects = mockProjects.filter(
+    (p) => p.status === "COMPLETED"
+  );
 
   return (
     <div className="space-y-6">
@@ -239,7 +250,9 @@ export function ProjectOverview() {
       <div className="grid gap-4 md:grid-cols-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Projects</CardTitle>
+            <CardTitle className="text-sm font-medium">
+              Total Projects
+            </CardTitle>
             <CheckSquare className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
@@ -297,5 +310,5 @@ export function ProjectOverview() {
         </div>
       )}
     </div>
-  )
+  );
 }
