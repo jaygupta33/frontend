@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import { useAuthStore } from "@/stores/authStore";
 import { useWorkspaceStore } from "@/stores/workspaceStore";
 import { useProjects } from "@/hooks/useProjects";
@@ -80,6 +80,7 @@ interface DashboardSidebarProps {
 
 export function DashboardSidebar({ children }: DashboardSidebarProps) {
   const router = useRouter();
+  const pathname = usePathname();
   // --- Get user and logout function from Zustand Auth Store ---
   const { user, logout } = useAuthStore();
 
@@ -121,16 +122,26 @@ export function DashboardSidebar({ children }: DashboardSidebarProps) {
           <SidebarGroup>
             <SidebarGroupContent>
               <SidebarMenu>
-                {navigationItems.map((item) => (
-                  <SidebarMenuItem key={item.title}>
-                    <SidebarMenuButton asChild>
-                      <Link href={item.url} className="flex items-center gap-2">
-                        <item.icon className="h-4 w-4" />
-                        <span>{item.title}</span>
-                      </Link>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                ))}
+                {navigationItems.map((item) => {
+                  const isActive =
+                    pathname === item.url ||
+                    (item.url !== "/dashboard" &&
+                      pathname.startsWith(item.url));
+
+                  return (
+                    <SidebarMenuItem key={item.title}>
+                      <SidebarMenuButton asChild isActive={isActive}>
+                        <Link
+                          href={item.url}
+                          className="flex items-center gap-2"
+                        >
+                          <item.icon className="h-4 w-4" />
+                          <span>{item.title}</span>
+                        </Link>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                  );
+                })}
               </SidebarMenu>
             </SidebarGroupContent>
           </SidebarGroup>

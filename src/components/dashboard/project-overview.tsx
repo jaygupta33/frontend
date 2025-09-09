@@ -1,8 +1,10 @@
+"use client";
+
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -18,117 +20,86 @@ import {
   Clock,
   ChevronRight,
 } from "lucide-react";
+import { useProjects } from "@/hooks/useProjects";
+import { useWorkspaceStore } from "@/stores/workspaceStore";
+import { Project, ProjectStatus, Priority } from "@/types";
+import { Skeleton } from "@/components/ui/skeleton";
 
-interface Project {
-  id: string;
-  name: string;
-  description: string;
-  status: "ACTIVE" | "COMPLETED" | "ON_HOLD";
-  progress: number;
-  totalTasks: number;
-  completedTasks: number;
-  dueDate: string;
-  team: {
-    name: string;
-    avatar?: string;
-    initials: string;
-  }[];
-  priority: "LOW" | "MEDIUM" | "HIGH";
-}
-
-const mockProjects: Project[] = [
-  {
-    id: "1",
-    name: "Website Redesign",
-    description:
-      "Complete overhaul of the company website with modern design and improved UX",
-    status: "ACTIVE",
-    progress: 75,
-    totalTasks: 12,
-    completedTasks: 9,
-    dueDate: "Sep 15, 2025",
-    team: [
-      { name: "Alice Johnson", initials: "AJ" },
-      { name: "Bob Smith", initials: "BS" },
-      { name: "Carol Davis", initials: "CD" },
-    ],
-    priority: "HIGH",
-  },
-  {
-    id: "2",
-    name: "Mobile App Development",
-    description: "Native mobile application for iOS and Android platforms",
-    status: "ACTIVE",
-    progress: 45,
-    totalTasks: 8,
-    completedTasks: 4,
-    dueDate: "Sep 30, 2025",
-    team: [
-      { name: "David Wilson", initials: "DW" },
-      { name: "Eve Brown", initials: "EB" },
-    ],
-    priority: "HIGH",
-  },
-  {
-    id: "3",
-    name: "API Development",
-    description: "RESTful API development for microservices architecture",
-    status: "ACTIVE",
-    progress: 20,
-    totalTasks: 15,
-    completedTasks: 3,
-    dueDate: "Oct 15, 2025",
-    team: [
-      { name: "Frank Miller", initials: "FM" },
-      { name: "Grace Lee", initials: "GL" },
-      { name: "Henry Zhang", initials: "HZ" },
-    ],
-    priority: "MEDIUM",
-  },
-  {
-    id: "4",
-    name: "Marketing Campaign",
-    description: "Q4 marketing campaign for product launch",
-    status: "COMPLETED",
-    progress: 100,
-    totalTasks: 6,
-    completedTasks: 6,
-    dueDate: "Aug 30, 2025",
-    team: [
-      { name: "Ivy Cooper", initials: "IC" },
-      { name: "Jack Turner", initials: "JT" },
-    ],
-    priority: "LOW",
-  },
+// Mock team data - keeping as requested
+const mockTeam = [
+  { name: "Alice Johnson", initials: "AJ" },
+  { name: "Bob Smith", initials: "BS" },
+  { name: "Carol Davis", initials: "CD" },
 ];
 
-function getStatusColor(status: string) {
+function getStatusColor(status: ProjectStatus) {
   switch (status) {
-    case "ACTIVE":
+    case ProjectStatus.ACTIVE:
       return "bg-chart-2 text-white";
-    case "COMPLETED":
+    case ProjectStatus.COMPLETED:
       return "bg-chart-1 text-white";
-    case "ON_HOLD":
+    case ProjectStatus.ON_HOLD:
       return "bg-muted text-muted-foreground";
     default:
       return "bg-muted text-muted-foreground";
   }
 }
 
-function getPriorityColor(priority: string) {
+function getPriorityColor(priority: Priority) {
   switch (priority) {
-    case "HIGH":
+    case Priority.HIGH:
       return "bg-destructive text-destructive-foreground";
-    case "MEDIUM":
+    case Priority.MEDIUM:
       return "bg-chart-4 text-white";
-    case "LOW":
+    case Priority.LOW:
       return "bg-muted text-muted-foreground";
     default:
       return "bg-muted text-muted-foreground";
   }
 }
 
-function ProjectCard({ project }: { project: Project }) {
+// Helper function to calculate project progress
+function calculateProgress(project: Project) {
+  if (!project.tasks || project.tasks.length === 0) {
+    return {
+      totalTasks: 0,
+      completedTasks: 0,
+      progress: 0,
+    };
+  }
+
+  const totalTasks = project.tasks.length;
+  const completedTasks = project.tasks.filter(
+    (task) => task.status === "DONE"
+  ).length;
+  const progress =
+    totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
+
+  return {
+    totalTasks,
+    completedTasks,
+    progress,
+  };
+}
+
+function formatDate(dateString: string | null | undefined) {
+  if (!dateString) return "No due date";
+
+  try {
+    const date = new Date(dateString);
+    return date.toLocaleDateString("en-US", {
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+    });
+  } catch {
+    return "Invalid date";
+  }
+}
+
+function ProjectCard({ project }: { readonly project: Project }) {
+  const { totalTasks, completedTasks, progress } = calculateProgress(project);
+
   return (
     <Card className="hover:shadow-md transition-shadow">
       <CardHeader className="pb-4">
@@ -136,7 +107,7 @@ function ProjectCard({ project }: { project: Project }) {
           <div className="space-y-1">
             <CardTitle className="text-lg">{project.name}</CardTitle>
             <p className="text-sm text-muted-foreground line-clamp-2">
-              {project.description}
+              {project.description || "No description provided"}
             </p>
           </div>
           <DropdownMenu>
@@ -161,20 +132,20 @@ function ProjectCard({ project }: { project: Project }) {
         <div className="space-y-2">
           <div className="flex items-center justify-between text-sm">
             <span className="font-medium">Progress</span>
-            <span className="text-muted-foreground">{project.progress}%</span>
+            <span className="text-muted-foreground">{progress}%</span>
           </div>
-          <Progress value={project.progress} className="h-2" />
+          <Progress value={progress} className="h-2" />
           <div className="flex items-center justify-between text-xs text-muted-foreground">
             <span>
-              {project.completedTasks} of {project.totalTasks} tasks completed
+              {completedTasks} of {totalTasks} tasks completed
             </span>
           </div>
         </div>
 
         {/* Status and Priority */}
         <div className="flex items-center gap-2">
-          <Badge className={getStatusColor(project.status)}>
-            {project.status.replace("_", " ")}
+          <Badge className={getStatusColor(project.projectStatus)}>
+            {project.projectStatus.replace("_", " ")}
           </Badge>
           <Badge
             variant="outline"
@@ -189,21 +160,21 @@ function ProjectCard({ project }: { project: Project }) {
           <div className="flex items-center gap-2">
             <Users className="h-4 w-4 text-muted-foreground" />
             <div className="flex -space-x-2">
-              {project.team.slice(0, 3).map((member) => (
+              {/* Using mock team data as requested */}
+              {mockTeam.slice(0, 3).map((member) => (
                 <Avatar
                   key={member.name}
                   className="h-6 w-6 border-2 border-background"
                 >
-                  <AvatarImage src={member.avatar} />
                   <AvatarFallback className="text-xs">
                     {member.initials}
                   </AvatarFallback>
                 </Avatar>
               ))}
-              {project.team.length > 3 && (
+              {mockTeam.length > 3 && (
                 <div className="h-6 w-6 rounded-full bg-muted border-2 border-background flex items-center justify-center">
                   <span className="text-xs text-muted-foreground">
-                    +{project.team.length - 3}
+                    +{mockTeam.length - 3}
                   </span>
                 </div>
               )}
@@ -211,7 +182,7 @@ function ProjectCard({ project }: { project: Project }) {
           </div>
           <div className="flex items-center gap-1 text-xs text-muted-foreground">
             <Calendar className="h-3 w-3" />
-            {project.dueDate}
+            {formatDate(project.dueDate)}
           </div>
         </div>
 
@@ -226,10 +197,92 @@ function ProjectCard({ project }: { project: Project }) {
 }
 
 export function ProjectOverview() {
-  const activeProjects = mockProjects.filter((p) => p.status === "ACTIVE");
-  const completedProjects = mockProjects.filter(
-    (p) => p.status === "COMPLETED"
+  const { currentWorkspace } = useWorkspaceStore();
+  const workspaceId = currentWorkspace?.id || "cmf8ny6xw0000g0ickuojpqhj";
+
+  const { data: projects = [], isLoading, isError } = useProjects(workspaceId);
+
+  const activeProjects = projects.filter(
+    (p) => p.projectStatus === ProjectStatus.ACTIVE
   );
+  const completedProjects = projects.filter(
+    (p) => p.projectStatus === ProjectStatus.COMPLETED
+  );
+  const onHoldProjects = projects.filter(
+    (p) => p.projectStatus === ProjectStatus.ON_HOLD
+  );
+
+  if (isLoading) {
+    return (
+      <div className="space-y-6">
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold tracking-tight">Projects</h1>
+            <p className="text-muted-foreground">
+              Manage and track progress across all your projects
+            </p>
+          </div>
+          <Button>
+            <Plus className="mr-2 h-4 w-4" />
+            New Project
+          </Button>
+        </div>
+
+        {/* Loading skeletons */}
+        <div className="grid gap-4 md:grid-cols-4">
+          {[1, 2, 3, 4].map((i) => (
+            <Card key={i}>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <Skeleton className="h-4 w-24" />
+                <Skeleton className="h-4 w-4" />
+              </CardHeader>
+              <CardContent>
+                <Skeleton className="h-8 w-12" />
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+
+        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+          {[1, 2, 3].map((i) => (
+            <Card key={i}>
+              <CardHeader>
+                <Skeleton className="h-6 w-48" />
+                <Skeleton className="h-4 w-full" />
+              </CardHeader>
+              <CardContent>
+                <Skeleton className="h-20 w-full" />
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  if (isError) {
+    return (
+      <div className="space-y-6">
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold tracking-tight">Projects</h1>
+            <p className="text-muted-foreground">
+              Manage and track progress across all your projects
+            </p>
+          </div>
+          <Button>
+            <Plus className="mr-2 h-4 w-4" />
+            New Project
+          </Button>
+        </div>
+        <Card className="p-6">
+          <div className="text-center text-destructive">
+            <p>Error loading projects. Please try again.</p>
+          </div>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -256,7 +309,7 @@ export function ProjectOverview() {
             <CheckSquare className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{mockProjects.length}</div>
+            <div className="text-2xl font-bold">{projects.length}</div>
           </CardContent>
         </Card>
         <Card>
@@ -279,24 +332,26 @@ export function ProjectOverview() {
         </Card>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Team Members</CardTitle>
-            <Users className="h-4 w-4 text-chart-3" />
+            <CardTitle className="text-sm font-medium">On Hold</CardTitle>
+            <Clock className="h-4 w-4 text-chart-3" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">8</div>
+            <div className="text-2xl font-bold">{onHoldProjects.length}</div>
           </CardContent>
         </Card>
       </div>
 
       {/* Active Projects */}
-      <div className="space-y-4">
-        <h2 className="text-xl font-semibold">Active Projects</h2>
-        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-          {activeProjects.map((project) => (
-            <ProjectCard key={project.id} project={project} />
-          ))}
+      {activeProjects.length > 0 && (
+        <div className="space-y-4">
+          <h2 className="text-xl font-semibold">Active Projects</h2>
+          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+            {activeProjects.map((project) => (
+              <ProjectCard key={project.id} project={project} />
+            ))}
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Completed Projects */}
       {completedProjects.length > 0 && (
@@ -308,6 +363,37 @@ export function ProjectOverview() {
             ))}
           </div>
         </div>
+      )}
+
+      {/* On Hold Projects */}
+      {onHoldProjects.length > 0 && (
+        <div className="space-y-4">
+          <h2 className="text-xl font-semibold">On Hold Projects</h2>
+          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+            {onHoldProjects.map((project) => (
+              <ProjectCard key={project.id} project={project} />
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Empty state */}
+      {projects.length === 0 && (
+        <Card className="p-6">
+          <div className="text-center space-y-4">
+            <CheckSquare className="h-12 w-12 mx-auto text-muted-foreground" />
+            <div>
+              <h3 className="text-lg font-medium">No projects yet</h3>
+              <p className="text-muted-foreground">
+                Get started by creating your first project
+              </p>
+            </div>
+            <Button>
+              <Plus className="mr-2 h-4 w-4" />
+              Create Project
+            </Button>
+          </div>
+        </Card>
       )}
     </div>
   );

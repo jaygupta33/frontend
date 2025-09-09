@@ -177,13 +177,13 @@ function TaskCard({
 
   return (
     <Card
-      className={`mb-3 hover:shadow-md transition-shadow cursor-pointer ${
+      className={`mb-2 hover:shadow-md transition-shadow cursor-pointer ${
         isUpdating ? "ring-2 ring-primary/20" : ""
       }`}
       onClick={handleCardClick}
     >
-      <CardContent className="p-4">
-        <div className="space-y-3">
+      <CardContent className="p-3">
+        <div className="space-y-2">
           {/* Header */}
           <div className="flex items-start justify-between">
             <div className="flex items-center gap-2">
@@ -299,7 +299,7 @@ function DroppableColumn({
   return (
     <div className="h-full flex flex-col">
       <Card className="flex-1 flex flex-col">
-        <CardHeader className="pb-3 flex-shrink-0">
+        <CardHeader className="pb-2 flex-shrink-0">
           <div className="flex items-center justify-between">
             <CardTitle className="text-sm font-medium">
               {column.title}
@@ -317,7 +317,7 @@ function DroppableColumn({
         <CardContent className="pt-0 flex-1 flex flex-col">
           <div
             ref={setNodeRef}
-            className={`flex-1 space-y-2 p-2 rounded-lg border-2 border-dashed transition-colors ${
+            className={`flex-1 space-y-1 p-1 rounded-lg border-2 border-dashed transition-colors ${
               isOver
                 ? "border-primary bg-primary/5"
                 : "border-transparent hover:border-muted-foreground/25"
@@ -417,13 +417,8 @@ export function TaskBoard() {
     // Reset optimistic flag when new server data arrives
     setUseOptimistic(false);
 
-    // Only update optimistic tasks if we have server tasks and they're different
-    if (
-      serverTasks.length > 0 &&
-      (optimisticTasks.length === 0 ||
-        optimisticTasks.length !== serverTasks.length ||
-        !hasInitializedRef.current)
-    ) {
+    // Always update optimistic tasks when server data changes
+    if (serverTasks.length > 0) {
       setOptimisticTasks([...serverTasks]); // Create new array to ensure reference change
       hasInitializedRef.current = true;
     } else if (
@@ -433,7 +428,7 @@ export function TaskBoard() {
     ) {
       setOptimisticTasks([]);
     }
-  }, [serverTasks.length, isLoading]); // Use length instead of full array
+  }, [serverTasks, isLoading]); // Add serverTasks directly as dependency
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -616,11 +611,11 @@ export function TaskBoard() {
           </Button>
         </div>
 
-        <div className="flex flex-col md:flex-row gap-6 flex-1 min-h-0">
+        <div className="flex flex-col md:flex-row gap-4 flex-1 min-h-0">
           {columns.map((column) => (
             <div key={column.id} className="flex-1 min-h-0">
               <Card className="h-full flex flex-col">
-                <CardHeader className="pb-3 flex-shrink-0">
+                <CardHeader className="pb-2 flex-shrink-0">
                   <div className="flex items-center justify-between">
                     <CardTitle className="text-sm font-medium">
                       {column.title}
@@ -687,7 +682,7 @@ export function TaskBoard() {
           </div>
         </div>
 
-        <div className="flex flex-col md:flex-row gap-6 flex-1 min-h-0">
+        <div className="flex flex-col md:flex-row gap-4 flex-1 min-h-0">
           {columns.map((column) => {
             const tasks = getTasksForColumn(column.status);
             return (

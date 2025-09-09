@@ -28,9 +28,11 @@ import {
   Code,
 } from "lucide-react";
 import { Task } from "@/types";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useAddComment } from "@/hooks";
 import { useWorkspaceStore } from "@/stores/workspaceStore";
+import { useQueryClient } from "@tanstack/react-query";
+import { taskKeys } from "@/hooks/useTasks";
 
 interface TaskDetailModalProps {
   readonly task: Task | null;
@@ -105,11 +107,41 @@ export function TaskDetailModal({
 
   const { currentWorkspace, currentProject } = useWorkspaceStore();
   const addCommentMutation = useAddComment();
+  const queryClient = useQueryClient();
+
+  // Monitor task changes
+  useEffect(() => {
+    console.log("Task prop changed:", task);
+    console.log("Comments in task:", task?.comments?.length || 0);
+  }, [task]);
 
   if (!task) return null;
 
-  const workspaceId = currentWorkspace?.id || "";
-  const projectId = currentProject?.id || task.projectId;
+  const workspaceId = currentWorkspace?.id || "cmf8ny6xw0000g0ickuojpqhj";
+  const projectId =
+    currentProject?.id === "all"
+      ? task.projectId
+      : currentProject?.id || task.projectId;
+
+  // Get the latest task data from the query cache
+  const getLatestTask = () => {
+    const projectTasks = queryClient.getQueryData(
+      taskKeys.list(workspaceId, projectId)
+    );
+    const allTasks = queryClient.getQueryData(
+      taskKeys.allInWorkspace(workspaceId)
+    );
+
+    const tasks = currentProject?.id === "all" ? allTasks : projectTasks;
+    const latestTask = (tasks as Task[])?.find((t) => t.id === task.id);
+
+    console.log("Latest task from cache:", latestTask);
+    console.log("Latest task comments:", latestTask?.comments?.length || 0);
+
+    return latestTask || task;
+  };
+
+  const currentTask = getLatestTask();
 
   const formatDate = (dateString: string) => {
     try {
@@ -190,27 +222,70 @@ export function TaskDetailModal({
   };
 
   const handleAddComment = () => {
-    if (newComment.trim() && workspaceId && projectId) {
-      addCommentMutation.mutate(
-        {
-          workspaceId,
-          projectId,
-          taskId: task.id,
-          content: newComment.trim(),
-        },
-        {
-          onSuccess: () => {
-            setNewComment("");
-            // The mutation will automatically invalidate the tasks query
-            // which will refetch the task with updated comments
-          },
-          onError: (error) => {
-            console.error("Failed to add comment:", error);
-            // You could show a toast notification here
-          },
-        }
-      );
+    console.log("handleAddComment called");
+    console.log("newComment:", newComment);
+    console.log("workspaceId:", workspaceId);
+    console.log("projectId:", projectId);
+    console.log("taskId:", task.id);
+
+    if (!newComment.trim()) {
+      console.log("Comment is empty, returning");
+      return;
     }
+
+    if (!workspaceId) {
+      console.error("Workspace ID is missing");
+      return;
+    }
+
+    if (!projectId) {
+      console.error("Project ID is missing");
+      return;
+    }
+
+    console.log("Starting mutation with data:", {
+      workspaceId,
+      projectId,
+      taskId: task.id,
+      content: newComment.trim(),
+    });
+
+    addCommentMutation.mutate(
+      {
+        workspaceId,
+        projectId,
+        taskId: task.id,
+        content: newComment.trim(),
+      },
+      {
+        onSuccess: (data) => {
+          console.log("Comment mutation successful:", data);
+          setNewComment("");
+
+          // Force invalidate and refetch all related queries
+          queryClient.invalidateQueries({
+            queryKey: taskKeys.list(workspaceId, projectId),
+          });
+
+          queryClient.invalidateQueries({
+            queryKey: taskKeys.allInWorkspace(workspaceId),
+          });
+
+          // Force refetch to ensure UI updates immediately
+          queryClient.refetchQueries({
+            queryKey: taskKeys.list(workspaceId, projectId),
+          });
+
+          queryClient.refetchQueries({
+            queryKey: taskKeys.allInWorkspace(workspaceId),
+          });
+        },
+        onError: (error) => {
+          console.error("Failed to add comment:", error);
+          // You could show a toast notification here
+        },
+      }
+    );
   };
 
   return (
@@ -222,18 +297,20 @@ export function TaskDetailModal({
             <DialogHeader className="p-6 pb-4 border-b">
               <div className="flex items-start justify-between">
                 <div className="flex items-center gap-3">
-                  {getPriorityIcon(task.priority)}
+                  {getPriorityIcon(currentTask.priority)}
                   <div>
                     <DialogTitle className="text-xl font-semibold">
-                      {task.title || "Untitled Task"}
+                      {currentTask.title || "Untitled Task"}
                     </DialogTitle>
                     <div className="flex items-center gap-2 mt-1">
                       <Badge variant="outline" className="text-xs">
-                        {task.project?.name || task.projectName || "No Project"}
+                        {currentTask.project?.name ||
+                          currentTask.projectName ||
+                          "No Project"}
                       </Badge>
                       <span className="text-xs text-muted-foreground">•</span>
                       <span className="text-xs text-muted-foreground">
-                        Created {getRelativeTime(task.createdAt)}
+                        Created {getRelativeTime(currentTask.createdAt)}
                       </span>
                     </div>
                   </div>
@@ -288,7 +365,7 @@ export function TaskDetailModal({
                     {isEditing ? (
                       <div className="space-y-2">
                         <Textarea
-                          defaultValue={task.description || ""}
+                          defaultValue={currentTask.description || ""}
                           placeholder="Add a description..."
                           className="min-h-[100px]"
                         />
@@ -305,7 +382,7 @@ export function TaskDetailModal({
                       </div>
                     ) : (
                       <div className="text-sm text-muted-foreground">
-                        {task.description || (
+                        {currentTask.description || (
                           <div className="italic text-gray-400">
                             No description provided. Click Edit to add one.
                           </div>
@@ -320,7 +397,7 @@ export function TaskDetailModal({
                   <div>
                     <h3 className="text-sm font-medium mb-4 flex items-center gap-2">
                       <MessageSquare className="h-4 w-4" />
-                      Comments ({task.comments?.length || 0})
+                      Comments ({currentTask.comments?.length || 0})
                     </h3>
 
                     {/* Add Comment */}
@@ -372,8 +449,9 @@ export function TaskDetailModal({
 
                     {/* Existing Comments */}
                     <div className="space-y-4">
-                      {task.comments && task.comments.length > 0 ? (
-                        task.comments.map((comment) => (
+                      {currentTask.comments &&
+                      currentTask.comments.length > 0 ? (
+                        currentTask.comments.map((comment) => (
                           <div key={comment.id} className="flex gap-3">
                             <Avatar className="h-8 w-8">
                               <AvatarFallback className="text-xs">
@@ -533,7 +611,7 @@ export function TaskDetailModal({
               </div>
               <div className="mt-2">
                 <Badge variant="outline" className="w-full justify-center py-2">
-                  {task.status.replace("_", " ")}
+                  {currentTask.status.replace("_", " ")}
                 </Badge>
               </div>
             </div>
@@ -544,16 +622,18 @@ export function TaskDetailModal({
                 Assignee
               </div>
               <div className="mt-2">
-                {task.assignee ? (
+                {currentTask.assignee ? (
                   <div className="flex items-center gap-2 p-2 rounded-md border">
                     <Avatar className="h-6 w-6">
                       <AvatarFallback className="text-xs">
-                        {task.assignee.username
+                        {currentTask.assignee.username
                           ?.substring(0, 2)
                           .toUpperCase() || "??"}
                       </AvatarFallback>
                     </Avatar>
-                    <span className="text-sm">{task.assignee.username}</span>
+                    <span className="text-sm">
+                      {currentTask.assignee.username}
+                    </span>
                   </div>
                 ) : (
                   <Button
@@ -576,11 +656,11 @@ export function TaskDetailModal({
                 <Badge
                   variant="secondary"
                   className={`w-full justify-center py-2 ${getPriorityColor(
-                    task.priority || "LOW"
+                    currentTask.priority || "LOW"
                   )}`}
                 >
                   <Flag className="h-3 w-3 mr-1" />
-                  {task.priority || "LOW"}
+                  {currentTask.priority || "LOW"}
                 </Badge>
               </div>
             </div>
@@ -591,10 +671,12 @@ export function TaskDetailModal({
                 Due Date
               </div>
               <div className="mt-2">
-                {task.dueDate ? (
+                {currentTask.dueDate ? (
                   <div className="flex items-center gap-2 p-2 rounded-md border">
                     <Calendar className="h-4 w-4 text-muted-foreground" />
-                    <span className="text-sm">{formatDate(task.dueDate)}</span>
+                    <span className="text-sm">
+                      {formatDate(currentTask.dueDate)}
+                    </span>
                   </div>
                 ) : (
                   <Button
@@ -657,7 +739,7 @@ export function TaskDetailModal({
                 Created
               </div>
               <div className="mt-2 text-xs text-muted-foreground">
-                {formatDateTime(task.createdAt)}
+                {formatDateTime(currentTask.createdAt)}
               </div>
             </div>
           </div>

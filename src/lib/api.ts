@@ -175,11 +175,23 @@ export const addComment = async (
   taskId: string,
   content: string
 ) => {
-  const { data } = await apiClient.post(
-    `/dashboard/workspaces/${workspaceId}/projects/${projectId}/tasks/${taskId}/comments/add`,
-    { content }
-  );
-  return data.comment;
+  const url = `/dashboard/workspaces/${workspaceId}/projects/${projectId}/tasks/${taskId}/comments/add`;
+  console.log("addComment API called with:", {
+    workspaceId,
+    projectId,
+    taskId,
+    content,
+    url,
+  });
+
+  try {
+    const { data } = await apiClient.post(url, { content });
+    console.log("addComment API response:", data);
+    return data.comment;
+  } catch (error) {
+    console.error("addComment API error:", error);
+    throw error;
+  }
 };
 
 export const getComments = async (

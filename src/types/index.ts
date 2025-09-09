@@ -15,6 +15,12 @@ export enum Priority {
   HIGH = "HIGH",
 }
 
+export enum ProjectStatus {
+  ACTIVE = "ACTIVE",
+  COMPLETED = "COMPLETED",
+  ON_HOLD = "ON_HOLD",
+}
+
 // --- Model Interfaces ---
 // These interfaces represent the data structures for your application.
 
@@ -77,6 +83,10 @@ export interface Workspace {
 export interface Project {
   id: string;
   name: string;
+  description?: string | null;
+  priority: Priority;
+  dueDate?: string | null; // ISO date string
+  projectStatus: ProjectStatus;
   workspaceId: string;
   workspace?: Workspace; // Relation: Populated on the frontend
   tasks: Task[];
