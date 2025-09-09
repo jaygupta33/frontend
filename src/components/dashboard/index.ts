@@ -4,3 +4,4 @@ export { TaskBoard } from "./task-board";
 export { ProjectOverview } from "./project-overview";
 export { TeamOverview } from "./team-overview";
 export { ProjectSelector } from "./project-selector";
+export { TaskDetailModal } from "./task-detail-modal";

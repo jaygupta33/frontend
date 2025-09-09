@@ -27,6 +27,7 @@ import {
 import { useWorkspaceStore } from "@/stores/workspaceStore";
 import { Task, TaskStatus } from "@/types";
 import { ProjectSelector } from "./project-selector";
+import { TaskDetailModal } from "./task-detail-modal";
 import {
   DndContext,
   DragEndEvent,
@@ -44,7 +45,7 @@ import {
   useSortable,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 
 const columns = [
   { id: "TODO", title: "To Do", status: "TODO" as TaskStatus },
@@ -83,10 +84,12 @@ function DraggableTaskCard({
   task,
   showProjectName = false,
   isUpdating = false,
+  onTaskClick,
 }: {
   readonly task: Task;
   readonly showProjectName?: boolean;
   readonly isUpdating?: boolean;
+  readonly onTaskClick: (task: Task) => void;
 }) {
   const {
     attributes,
@@ -116,6 +119,7 @@ function DraggableTaskCard({
         task={task}
         showProjectName={showProjectName}
         isUpdating={isUpdating}
+        onTaskClick={onTaskClick}
       />
     </div>
   );
@@ -125,10 +129,12 @@ function TaskCard({
   task,
   showProjectName = false,
   isUpdating = false,
+  onTaskClick,
 }: {
   readonly task: Task;
   readonly showProjectName?: boolean;
   readonly isUpdating?: boolean;
+  readonly onTaskClick?: (task: Task) => void;
 }) {
   const { currentWorkspace, currentProject } = useWorkspaceStore();
   const deleteTaskMutation = useDeleteTask();
@@ -142,6 +148,14 @@ function TaskCard({
       projectId,
       taskId: task.id,
     });
+  };
+
+  const handleCardClick = (e: React.MouseEvent) => {
+    // Prevent modal from opening when clicking on dropdown menu
+    if ((e.target as HTMLElement).closest("[data-dropdown-trigger]")) {
+      return;
+    }
+    onTaskClick?.(task);
   };
 
   const formatDate = (dateString: string) => {
@@ -160,11 +174,13 @@ function TaskCard({
   if (!task?.id) {
     return null;
   }
+
   return (
     <Card
-      className={`mb-3 hover:shadow-md transition-shadow ${
+      className={`mb-3 hover:shadow-md transition-shadow cursor-pointer ${
         isUpdating ? "ring-2 ring-primary/20" : ""
       }`}
+      onClick={handleCardClick}
     >
       <CardContent className="p-4">
         <div className="space-y-3">
@@ -183,7 +199,12 @@ function TaskCard({
             </div>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="sm" className="h-6 w-6 p-0">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-6 w-6 p-0"
+                  data-dropdown-trigger
+                >
                   <MoreHorizontal className="h-3 w-3" />
                 </Button>
               </DropdownMenuTrigger>
@@ -263,20 +284,22 @@ function DroppableColumn({
   tasks,
   showProjectName,
   updatingTaskIds,
+  onTaskClick,
 }: {
   readonly column: { id: string; title: string; status: TaskStatus };
   readonly tasks: Task[];
   readonly showProjectName: boolean;
   readonly updatingTaskIds: Set<string>;
+  readonly onTaskClick: (task: Task) => void;
 }) {
   const { setNodeRef, isOver } = useDroppable({
     id: column.id,
   });
 
   return (
-    <div className="space-y-4">
-      <Card>
-        <CardHeader className="pb-3">
+    <div className="h-full flex flex-col">
+      <Card className="flex-1 flex flex-col">
+        <CardHeader className="pb-3 flex-shrink-0">
           <div className="flex items-center justify-between">
             <CardTitle className="text-sm font-medium">
               {column.title}
@@ -291,10 +314,10 @@ function DroppableColumn({
             </div>
           </div>
         </CardHeader>
-        <CardContent className="pt-0">
+        <CardContent className="pt-0 flex-1 flex flex-col">
           <div
             ref={setNodeRef}
-            className={`space-y-2 min-h-[200px] p-2 rounded-lg border-2 border-dashed transition-colors ${
+            className={`flex-1 space-y-2 p-2 rounded-lg border-2 border-dashed transition-colors ${
               isOver
                 ? "border-primary bg-primary/5"
                 : "border-transparent hover:border-muted-foreground/25"
@@ -311,6 +334,7 @@ function DroppableColumn({
                   task={task}
                   showProjectName={showProjectName}
                   isUpdating={updatingTaskIds.has(task.id)}
+                  onTaskClick={onTaskClick}
                 />
               ))}
             </SortableContext>
@@ -333,6 +357,11 @@ export function TaskBoard() {
   const [updatingTaskIds, setUpdatingTaskIds] = useState<Set<string>>(
     new Set()
   );
+  const [selectedTask, setSelectedTask] = useState<Task | null>(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+
+  // Use ref to track initialization to prevent Edge browser issues
+  const hasInitializedRef = useRef(false);
 
   // Use the workspace ID and current project from store
   const workspaceId = currentWorkspace?.id || "cmf8ny6xw0000g0ickuojpqhj";
@@ -357,41 +386,75 @@ export function TaskBoard() {
   // Update task mutation
   const updateTaskMutation = useUpdateTask();
 
+  // Handle task click to open modal
+  const handleTaskClick = (task: Task) => {
+    setSelectedTask(task);
+    setIsModalOpen(true);
+  };
+
+  // Handle modal close
+  const handleModalClose = () => {
+    setIsModalOpen(false);
+    setSelectedTask(null);
+  };
+
   // Determine which data to use - prioritize optimistic tasks for instant updates
-  const serverTasks = isAllProjects ? allWorkspaceTasks : projectTasks;
-  const allTasks = optimisticTasks.length > 0 ? optimisticTasks : serverTasks;
+  const serverTasks = useMemo(() => {
+    return isAllProjects ? allWorkspaceTasks : projectTasks;
+  }, [isAllProjects, allWorkspaceTasks, projectTasks]);
+
+  // Use separate state to track if we should use optimistic or server tasks
+  const [useOptimistic, setUseOptimistic] = useState(false);
+  const displayTasks =
+    useOptimistic && optimisticTasks.length > 0 ? optimisticTasks : serverTasks;
+
   const isLoading = isAllProjects ? isAllTasksLoading : isProjectLoading;
   const isError = isAllProjects ? isAllTasksError : isProjectError;
   const error = isAllProjects ? allTasksError : projectError;
 
-  // Update optimistic tasks when server data changes
+  // Update optimistic tasks when server data changes - with better Edge compatibility
   useEffect(() => {
-    if (serverTasks.length > 0) {
-      setOptimisticTasks(serverTasks);
-    } else if (serverTasks.length === 0 && !isLoading) {
-      // Clear optimistic tasks when no server tasks (e.g., empty project)
+    // Reset optimistic flag when new server data arrives
+    setUseOptimistic(false);
+
+    // Only update optimistic tasks if we have server tasks and they're different
+    if (
+      serverTasks.length > 0 &&
+      (optimisticTasks.length === 0 ||
+        optimisticTasks.length !== serverTasks.length ||
+        !hasInitializedRef.current)
+    ) {
+      setOptimisticTasks([...serverTasks]); // Create new array to ensure reference change
+      hasInitializedRef.current = true;
+    } else if (
+      serverTasks.length === 0 &&
+      !isLoading &&
+      hasInitializedRef.current
+    ) {
       setOptimisticTasks([]);
     }
-  }, [serverTasks, isLoading]);
+  }, [serverTasks.length, isLoading]); // Use length instead of full array
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
       activationConstraint: {
         distance: 8,
+        delay: 250,
+        tolerance: 5,
       },
     })
   );
 
   const getTasksForColumn = (status: TaskStatus) => {
-    if (!allTasks || !Array.isArray(allTasks)) {
+    if (!displayTasks || !Array.isArray(displayTasks)) {
       return [];
     }
-    return allTasks.filter((task: Task) => task.status === status);
+    return displayTasks.filter((task: Task) => task.status === status);
   };
 
   const handleDragStart = (event: DragStartEvent) => {
     const { active } = event;
-    const task = allTasks.find((t: Task) => t.id === active.id);
+    const task = displayTasks.find((t: Task) => t.id === active.id);
     setActiveTask(task || null);
   };
 
@@ -414,7 +477,7 @@ export function TaskBoard() {
       newStatus = overId as TaskStatus;
     } else {
       // If dropped on a task, find that task's status (column)
-      const overTask = allTasks.find((task: Task) => task.id === overId);
+      const overTask = displayTasks.find((task: Task) => task.id === overId);
       if (overTask) {
         newStatus = overTask.status;
       } else {
@@ -425,7 +488,7 @@ export function TaskBoard() {
     }
 
     // Find the task being moved
-    const task = allTasks.find((t: Task) => t.id === taskId);
+    const task = displayTasks.find((t: Task) => t.id === taskId);
 
     if (!task || task.status === newStatus) {
       setActiveTask(null);
@@ -433,10 +496,11 @@ export function TaskBoard() {
     }
 
     // Optimistically update the local tasks state immediately
-    const updatedTasks = allTasks.map((t) =>
+    const updatedTasks = displayTasks.map((t: Task) =>
       t.id === taskId ? { ...t, status: newStatus } : t
     );
     setOptimisticTasks(updatedTasks);
+    setUseOptimistic(true); // Enable optimistic mode
 
     // Mark task as updating
     setUpdatingTaskIds((prev) => new Set(prev).add(taskId));
@@ -502,7 +566,7 @@ export function TaskBoard() {
     }
 
     // If dragging over another task, find which column it belongs to
-    const overTask = allTasks.find((task: Task) => task.id === overId);
+    const overTask = displayTasks.find((task: Task) => task.id === overId);
     if (overTask) {
       return;
     }
@@ -538,8 +602,8 @@ export function TaskBoard() {
 
   if (isLoading) {
     return (
-      <div className="space-y-6">
-        <div className="flex items-center justify-between">
+      <div className="flex flex-col h-full space-y-6">
+        <div className="flex items-center justify-between flex-shrink-0">
           <div>
             <h1 className="text-3xl font-bold tracking-tight">Task Board</h1>
             <p className="text-muted-foreground">
@@ -552,25 +616,27 @@ export function TaskBoard() {
           </Button>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="flex flex-col md:flex-row gap-6 flex-1 min-h-0">
           {columns.map((column) => (
-            <Card key={column.id}>
-              <CardHeader className="pb-3">
-                <div className="flex items-center justify-between">
-                  <CardTitle className="text-sm font-medium">
-                    {column.title}
-                  </CardTitle>
-                  <Skeleton className="h-5 w-8" />
-                </div>
-              </CardHeader>
-              <CardContent className="pt-0">
-                <div className="space-y-2">
-                  {[1, 2, 3].map((i) => (
-                    <Skeleton key={i} className="h-32 w-full" />
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
+            <div key={column.id} className="flex-1 min-h-0">
+              <Card className="h-full flex flex-col">
+                <CardHeader className="pb-3 flex-shrink-0">
+                  <div className="flex items-center justify-between">
+                    <CardTitle className="text-sm font-medium">
+                      {column.title}
+                    </CardTitle>
+                    <Skeleton className="h-5 w-8" />
+                  </div>
+                </CardHeader>
+                <CardContent className="pt-0 flex-1">
+                  <div className="space-y-2">
+                    {[1, 2, 3].map((i) => (
+                      <Skeleton key={i} className="h-20 w-full" />
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
           ))}
         </div>
       </div>
@@ -579,8 +645,8 @@ export function TaskBoard() {
 
   if (isError) {
     return (
-      <div className="space-y-6">
-        <div className="flex items-center justify-between">
+      <div className="flex flex-col h-full space-y-6">
+        <div className="flex items-center justify-between flex-shrink-0">
           <div>
             <h1 className="text-3xl font-bold tracking-tight">Task Board</h1>
             <p className="text-muted-foreground">
@@ -588,7 +654,7 @@ export function TaskBoard() {
             </p>
           </div>
         </div>
-        <Card className="p-6">
+        <Card className="p-6 flex-1">
           <div className="text-center text-destructive">
             <p>Error loading tasks: {error?.message}</p>
           </div>
@@ -604,8 +670,8 @@ export function TaskBoard() {
       onDragEnd={handleDragEnd}
       onDragOver={handleDragOver}
     >
-      <div className="space-y-6">
-        <div className="flex items-center justify-between">
+      <div className="flex flex-col h-full space-y-6">
+        <div className="flex items-center justify-between flex-shrink-0">
           <div>
             <h1 className="text-3xl font-bold tracking-tight">Task Board</h1>
             <p className="text-muted-foreground">
@@ -621,17 +687,19 @@ export function TaskBoard() {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="flex flex-col md:flex-row gap-6 flex-1 min-h-0">
           {columns.map((column) => {
             const tasks = getTasksForColumn(column.status);
             return (
-              <DroppableColumn
-                key={column.id}
-                column={column}
-                tasks={tasks}
-                showProjectName={isAllProjects}
-                updatingTaskIds={updatingTaskIds}
-              />
+              <div key={column.id} className="flex-1 min-h-0">
+                <DroppableColumn
+                  column={column}
+                  tasks={tasks}
+                  showProjectName={isAllProjects}
+                  updatingTaskIds={updatingTaskIds}
+                  onTaskClick={handleTaskClick}
+                />
+              </div>
             );
           })}
         </div>
@@ -639,9 +707,19 @@ export function TaskBoard() {
 
       <DragOverlay>
         {activeTask ? (
-          <TaskCard task={activeTask} showProjectName={isAllProjects} />
+          <TaskCard
+            task={activeTask}
+            showProjectName={isAllProjects}
+            onTaskClick={handleTaskClick}
+          />
         ) : null}
       </DragOverlay>
+
+      <TaskDetailModal
+        task={selectedTask}
+        isOpen={isModalOpen}
+        onClose={handleModalClose}
+      />
     </DndContext>
   );
 }

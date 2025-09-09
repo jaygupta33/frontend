@@ -182,4 +182,15 @@ export const addComment = async (
   return data.comment;
 };
 
+export const getComments = async (
+  workspaceId: string,
+  projectId: string,
+  taskId: string
+) => {
+  const { data } = await apiClient.get(
+    `/dashboard/workspaces/${workspaceId}/projects/${projectId}/tasks/${taskId}/comments`
+  );
+  return data.comments;
+};
+
 export default apiClient;
