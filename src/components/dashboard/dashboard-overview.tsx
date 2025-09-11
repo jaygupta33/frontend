@@ -1,7 +1,10 @@
+"use client";
+
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   CheckSquare,
   Clock,
@@ -11,122 +14,85 @@ import {
   AlertCircle,
   ChevronRight,
 } from "lucide-react";
+import { useAuthStore } from "@/stores/authStore";
+import { useWorkspaceStore } from "@/stores/workspaceStore";
+import { useAllTasksInWorkspace } from "@/hooks/useTasks";
+import { useProjects } from "@/hooks/useProjects";
+import { useWorkspaces } from "@/hooks/useWorkspaces";
+import { TaskStatus, Priority } from "@/types";
+import { useMemo, useEffect } from "react";
 
-const stats = [
-  {
-    title: "Total Tasks",
-    value: "35",
-    change: "+12%",
-    trend: "up",
-    icon: CheckSquare,
-    color: "text-chart-1",
-  },
-  {
-    title: "In Progress",
-    value: "12",
-    change: "+3",
-    trend: "up",
-    icon: Clock,
-    color: "text-chart-2",
-  },
-  {
-    title: "Team Members",
-    value: "8",
-    change: "+2",
-    trend: "up",
-    icon: Users,
-    color: "text-chart-3",
-  },
-  {
-    title: "Completion Rate",
-    value: "68%",
-    change: "+5%",
-    trend: "up",
-    icon: TrendingUp,
-    color: "text-chart-4",
-  },
+// Mock data for features not yet implemented
+const mockTeamMembers = [
+  { id: "1", name: "Alice Johnson", role: "ADMIN" },
+  { id: "2", name: "Bob Smith", role: "MEMBER" },
+  { id: "3", name: "Carol Davis", role: "MEMBER" },
+  { id: "4", name: "David Wilson", role: "MEMBER" },
+  { id: "5", name: "Emma Brown", role: "MEMBER" },
+  { id: "6", name: "Frank Miller", role: "MEMBER" },
+  { id: "7", name: "Grace Taylor", role: "MEMBER" },
+  { id: "8", name: "Henry Johnson", role: "MEMBER" },
 ];
 
-const recentTasks = [
-  {
-    id: "1",
-    title: "Design new landing page",
-    project: "Website Redesign",
-    status: "IN_PROGRESS",
-    priority: "HIGH",
-    assignee: "Alice Johnson",
-    dueDate: "2025-09-08",
-  },
-  {
-    id: "2",
-    title: "Implement user authentication",
-    project: "Mobile App",
-    status: "TODO",
-    priority: "HIGH",
-    assignee: "Bob Smith",
-    dueDate: "2025-09-10",
-  },
-  {
-    id: "3",
-    title: "Write API documentation",
-    project: "API Development",
-    status: "IN_PROGRESS",
-    priority: "MEDIUM",
-    assignee: "Carol Davis",
-    dueDate: "2025-09-12",
-  },
-  {
-    id: "4",
-    title: "Set up testing environment",
-    project: "Website Redesign",
-    status: "DONE",
-    priority: "LOW",
-    assignee: "David Wilson",
-    dueDate: "2025-09-05",
-  },
+const mockAssignees = [
+  "Alice Johnson",
+  "Bob Smith",
+  "Carol Davis",
+  "David Wilson",
+  "Emma Brown",
+  "Frank Miller",
+  "Grace Taylor",
+  "Henry Johnson",
 ];
 
-const upcomingDeadlines = [
-  {
-    task: "User interface mockups",
-    project: "Mobile App",
-    dueDate: "Today",
-    priority: "HIGH",
-  },
-  {
-    task: "Database schema design",
-    project: "API Development",
-    dueDate: "Tomorrow",
-    priority: "HIGH",
-  },
-  {
-    task: "Content review",
-    project: "Website Redesign",
-    dueDate: "Sep 8",
-    priority: "MEDIUM",
-  },
-];
+// Utility functions
+function getRandomAssignee() {
+  return mockAssignees[Math.floor(Math.random() * mockAssignees.length)];
+}
 
-function getStatusColor(status: string) {
+function formatDate(dateString: string) {
+  const date = new Date(dateString);
+  const today = new Date();
+  const tomorrow = new Date(today);
+  tomorrow.setDate(today.getDate() + 1);
+
+  if (date.toDateString() === today.toDateString()) {
+    return "Today";
+  } else if (date.toDateString() === tomorrow.toDateString()) {
+    return "Tomorrow";
+  } else {
+    return date.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+  }
+}
+
+function calculateDaysUntilDue(dueDate: string) {
+  const due = new Date(dueDate);
+  const today = new Date();
+  const diffTime = due.getTime() - today.getTime();
+  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+  return diffDays;
+}
+
+function getStatusColor(status: TaskStatus) {
   switch (status) {
-    case "TODO":
+    case TaskStatus.TODO:
       return "bg-muted text-muted-foreground";
-    case "IN_PROGRESS":
+    case TaskStatus.IN_PROGRESS:
       return "bg-chart-2 text-white";
-    case "DONE":
+    case TaskStatus.DONE:
       return "bg-chart-1 text-white";
     default:
       return "bg-muted text-muted-foreground";
   }
 }
 
-function getPriorityColor(priority: string) {
+function getPriorityColor(priority: Priority) {
   switch (priority) {
-    case "HIGH":
+    case Priority.HIGH:
       return "bg-destructive text-destructive-foreground";
-    case "MEDIUM":
+    case Priority.MEDIUM:
       return "bg-chart-4 text-white";
-    case "LOW":
+    case Priority.LOW:
       return "bg-muted text-muted-foreground";
     default:
       return "bg-muted text-muted-foreground";
@@ -134,16 +100,243 @@ function getPriorityColor(priority: string) {
 }
 
 export function DashboardOverview() {
+  const { user } = useAuthStore();
+  const { currentWorkspace, setCurrentWorkspace } = useWorkspaceStore();
+
+  // Fetch workspaces first
+  const { data: workspaces = [], isLoading: workspacesLoading } =
+    useWorkspaces();
+
+  // Auto-select first workspace if none is selected
+  useEffect(() => {
+    if (workspaces.length > 0 && !currentWorkspace) {
+      console.log("Auto-selecting first workspace:", workspaces[0]);
+      setCurrentWorkspace(workspaces[0]);
+    }
+  }, [workspaces, currentWorkspace, setCurrentWorkspace]);
+
+  // Debug: Log the current workspace
+  console.log("Dashboard - Current workspace:", currentWorkspace);
+  console.log("Dashboard - User:", user);
+  console.log("Dashboard - Available workspaces:", workspaces);
+
+  // Fetch data using hooks
+  const {
+    data: tasks = [],
+    isLoading: tasksLoading,
+    error: tasksError,
+  } = useAllTasksInWorkspace(
+    currentWorkspace?.id || "",
+    !!currentWorkspace?.id
+  );
+
+  const {
+    data: projects = [],
+    isLoading: projectsLoading,
+    error: projectsError,
+  } = useProjects(currentWorkspace?.id || "");
+
+  // Debug: Log the fetched data
+  console.log("Dashboard - Tasks:", tasks);
+  console.log("Dashboard - Tasks loading:", tasksLoading);
+  console.log("Dashboard - Tasks error:", tasksError);
+  console.log("Dashboard - Projects:", projects);
+  console.log("Dashboard - Projects loading:", projectsLoading);
+  console.log("Dashboard - Projects error:", projectsError);
+
+  // Calculate statistics from real data
+  const stats = useMemo(() => {
+    const totalTasks = tasks.length;
+    const inProgressTasks = tasks.filter(
+      (task) => task.status === TaskStatus.IN_PROGRESS
+    ).length;
+    const completedTasks = tasks.filter(
+      (task) => task.status === TaskStatus.DONE
+    ).length;
+    const completionRate =
+      totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
+
+    return [
+      {
+        title: "Total Tasks",
+        value: totalTasks.toString(),
+        change: "+12%", // Mock percentage change
+        trend: "up",
+        icon: CheckSquare,
+        color: "text-chart-1",
+      },
+      {
+        title: "In Progress",
+        value: inProgressTasks.toString(),
+        change: `+${Math.max(1, Math.floor(inProgressTasks * 0.2))}`, // Mock change
+        trend: "up",
+        icon: Clock,
+        color: "text-chart-2",
+      },
+      {
+        title: "Team Members",
+        value: mockTeamMembers.length.toString(),
+        change: "+2", // Mock change
+        trend: "up",
+        icon: Users,
+        color: "text-chart-3",
+      },
+      {
+        title: "Completion Rate",
+        value: `${completionRate}%`,
+        change: "+5%", // Mock change
+        trend: "up",
+        icon: TrendingUp,
+        color: "text-chart-4",
+      },
+    ];
+  }, [tasks]);
+
+  // Get recent tasks (last 4 tasks)
+  const recentTasks = useMemo(() => {
+    const sortedTasks = [...tasks].sort(
+      (a, b) =>
+        new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+    );
+    return sortedTasks.slice(0, 4).map((task) => ({
+      ...task,
+      assignee: getRandomAssignee(), // Mock assignee since we don't have user names in tasks yet
+    }));
+  }, [tasks]);
+
+  // Get upcoming deadlines (tasks due soon)
+  const upcomingDeadlines = useMemo(() => {
+    const today = new Date();
+    const nextWeek = new Date(today);
+    nextWeek.setDate(today.getDate() + 7);
+
+    return tasks
+      .filter((task) => {
+        if (!task.dueDate) return false;
+        const dueDate = new Date(task.dueDate);
+        return (
+          dueDate >= today &&
+          dueDate <= nextWeek &&
+          task.status !== TaskStatus.DONE
+        );
+      })
+      .sort(
+        (a, b) =>
+          new Date(a.dueDate!).getTime() - new Date(b.dueDate!).getTime()
+      )
+      .slice(0, 3)
+      .map((task) => ({
+        task: task.title,
+        project: task.projectName || "Unknown Project",
+        dueDate: formatDate(task.dueDate!),
+        priority: task.priority,
+      }));
+  }, [tasks]);
+
+  // Calculate project progress
+  const projectProgress = useMemo(() => {
+    return projects.map((project) => {
+      const projectTasks = tasks.filter(
+        (task) => task.projectId === project.id
+      );
+      const completedTasks = projectTasks.filter(
+        (task) => task.status === TaskStatus.DONE
+      );
+      const progress =
+        projectTasks.length > 0
+          ? Math.round((completedTasks.length / projectTasks.length) * 100)
+          : 0;
+
+      return {
+        name: project.name,
+        progress,
+        completedTasks: completedTasks.length,
+        totalTasks: projectTasks.length,
+        dueDate: project.dueDate ? formatDate(project.dueDate) : "No due date",
+      };
+    });
+  }, [projects, tasks]);
+
+  if (workspacesLoading || tasksLoading || projectsLoading) {
+    return (
+      <div className="space-y-6">
+        <div className="flex flex-col gap-2">
+          <Skeleton className="h-9 w-64" />
+          <Skeleton className="h-5 w-96" />
+        </div>
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+          {[
+            "total-tasks",
+            "in-progress",
+            "team-members",
+            "completion-rate",
+          ].map((skeletonId) => (
+            <Card key={`skeleton-${skeletonId}`}>
+              <CardHeader>
+                <Skeleton className="h-4 w-24" />
+              </CardHeader>
+              <CardContent>
+                <Skeleton className="h-8 w-16 mb-2" />
+                <Skeleton className="h-3 w-20" />
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  // Show message if no workspaces exist
+  if (workspaces.length === 0) {
+    return (
+      <div className="space-y-6">
+        <div className="flex flex-col gap-2">
+          <h1 className="text-3xl font-bold tracking-tight">
+            Welcome back, {user?.username || "User"}!
+          </h1>
+          <p className="text-muted-foreground">
+            Get started by creating your first workspace.
+          </p>
+        </div>
+        <Card>
+          <CardContent className="pt-6">
+            <div className="text-center py-12">
+              <h3 className="text-lg font-semibold mb-2">
+                No Workspaces Found
+              </h3>
+              <p className="text-muted-foreground mb-4">
+                You need to create a workspace to start managing your projects
+                and tasks.
+              </p>
+              <Button>Create Workspace</Button>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       {/* Welcome Section */}
       <div className="flex flex-col gap-2">
         <h1 className="text-3xl font-bold tracking-tight">
-          Welcome back, John!
+          Welcome back, {user?.username || "User"}!
         </h1>
         <p className="text-muted-foreground">
-          Here's what's happening with your projects today.
+          Here's what's happening in <strong>{currentWorkspace?.name}</strong>{" "}
+          today.
         </p>
+        {tasksError && (
+          <p className="text-sm text-destructive">
+            Error loading tasks: {tasksError.message}
+          </p>
+        )}
+        {projectsError && (
+          <p className="text-sm text-destructive">
+            Error loading projects: {projectsError.message}
+          </p>
+        )}
       </div>
 
       {/* Stats Grid */}
@@ -179,32 +372,38 @@ export function DashboardOverview() {
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              {recentTasks.map((task) => (
-                <div
-                  key={task.id}
-                  className="flex items-center justify-between p-3 rounded-lg border hover:bg-muted/50 transition-colors"
-                >
-                  <div className="space-y-1">
-                    <p className="font-medium leading-none">{task.title}</p>
-                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                      <span>{task.project}</span>
-                      <span>•</span>
-                      <span>{task.assignee}</span>
+              {recentTasks.length > 0 ? (
+                recentTasks.map((task) => (
+                  <div
+                    key={task.id}
+                    className="flex items-center justify-between p-3 rounded-lg border hover:bg-muted/50 transition-colors"
+                  >
+                    <div className="space-y-1">
+                      <p className="font-medium leading-none">{task.title}</p>
+                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                        <span>{task.projectName || "No Project"}</span>
+                        <span>•</span>
+                        <span>{task.assignee}</span>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Badge
+                        variant="secondary"
+                        className={getPriorityColor(task.priority)}
+                      >
+                        {task.priority}
+                      </Badge>
+                      <Badge className={getStatusColor(task.status)}>
+                        {task.status.replace("_", " ")}
+                      </Badge>
                     </div>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <Badge
-                      variant="secondary"
-                      className={getPriorityColor(task.priority)}
-                    >
-                      {task.priority}
-                    </Badge>
-                    <Badge className={getStatusColor(task.status)}>
-                      {task.status.replace("_", " ")}
-                    </Badge>
-                  </div>
+                ))
+              ) : (
+                <div className="text-center py-6 text-muted-foreground">
+                  No tasks found. Create your first task to get started!
                 </div>
-              ))}
+              )}
             </div>
           </CardContent>
         </Card>
@@ -219,33 +418,39 @@ export function DashboardOverview() {
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              {upcomingDeadlines.map((item) => (
-                <div
-                  key={`${item.task}-${item.project}`}
-                  className="flex items-center justify-between p-3 rounded-lg border"
-                >
-                  <div className="space-y-1">
-                    <p className="font-medium leading-none">{item.task}</p>
-                    <p className="text-sm text-muted-foreground">
-                      {item.project}
-                    </p>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <div className="text-right">
-                      <p className="text-sm font-medium">{item.dueDate}</p>
-                      <Badge
-                        variant="outline"
-                        className={getPriorityColor(item.priority)}
-                      >
-                        {item.priority}
-                      </Badge>
+              {upcomingDeadlines.length > 0 ? (
+                upcomingDeadlines.map((item, index) => (
+                  <div
+                    key={`${item.task}-${item.project}-${index}`}
+                    className="flex items-center justify-between p-3 rounded-lg border"
+                  >
+                    <div className="space-y-1">
+                      <p className="font-medium leading-none">{item.task}</p>
+                      <p className="text-sm text-muted-foreground">
+                        {item.project}
+                      </p>
                     </div>
-                    {item.dueDate === "Today" && (
-                      <AlertCircle className="h-4 w-4 text-destructive" />
-                    )}
+                    <div className="flex items-center gap-2">
+                      <div className="text-right">
+                        <p className="text-sm font-medium">{item.dueDate}</p>
+                        <Badge
+                          variant="outline"
+                          className={getPriorityColor(item.priority)}
+                        >
+                          {item.priority}
+                        </Badge>
+                      </div>
+                      {item.dueDate === "Today" && (
+                        <AlertCircle className="h-4 w-4 text-destructive" />
+                      )}
+                    </div>
                   </div>
+                ))
+              ) : (
+                <div className="text-center py-6 text-muted-foreground">
+                  No upcoming deadlines in the next week.
                 </div>
-              ))}
+              )}
             </div>
           </CardContent>
         </Card>
@@ -258,41 +463,30 @@ export function DashboardOverview() {
         </CardHeader>
         <CardContent>
           <div className="space-y-6">
-            <div className="space-y-2">
-              <div className="flex items-center justify-between text-sm">
-                <span className="font-medium">Website Redesign</span>
-                <span className="text-muted-foreground">75% Complete</span>
+            {projectProgress.length > 0 ? (
+              projectProgress.map((project) => (
+                <div key={project.name} className="space-y-2">
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="font-medium">{project.name}</span>
+                    <span className="text-muted-foreground">
+                      {project.progress}% Complete
+                    </span>
+                  </div>
+                  <Progress value={project.progress} className="h-2" />
+                  <div className="flex items-center justify-between text-xs text-muted-foreground">
+                    <span>
+                      {project.completedTasks} of {project.totalTasks} tasks
+                      completed
+                    </span>
+                    <span>Due: {project.dueDate}</span>
+                  </div>
+                </div>
+              ))
+            ) : (
+              <div className="text-center py-6 text-muted-foreground">
+                No projects found. Create your first project to get started!
               </div>
-              <Progress value={75} className="h-2" />
-              <div className="flex items-center justify-between text-xs text-muted-foreground">
-                <span>9 of 12 tasks completed</span>
-                <span>Due: Sep 15</span>
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <div className="flex items-center justify-between text-sm">
-                <span className="font-medium">Mobile App</span>
-                <span className="text-muted-foreground">45% Complete</span>
-              </div>
-              <Progress value={45} className="h-2" />
-              <div className="flex items-center justify-between text-xs text-muted-foreground">
-                <span>4 of 8 tasks completed</span>
-                <span>Due: Sep 30</span>
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <div className="flex items-center justify-between text-sm">
-                <span className="font-medium">API Development</span>
-                <span className="text-muted-foreground">20% Complete</span>
-              </div>
-              <Progress value={20} className="h-2" />
-              <div className="flex items-center justify-between text-xs text-muted-foreground">
-                <span>3 of 15 tasks completed</span>
-                <span>Due: Oct 15</span>
-              </div>
-            </div>
+            )}
           </div>
         </CardContent>
       </Card>
