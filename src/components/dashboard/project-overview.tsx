@@ -20,6 +20,7 @@ import {
   Clock,
   ChevronRight,
 } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { useProjects } from "@/hooks/useProjects";
 import { useWorkspaceStore } from "@/stores/workspaceStore";
 import { Project, ProjectStatus, Priority } from "@/types";
@@ -98,7 +99,12 @@ function formatDate(dateString: string | null | undefined) {
 }
 
 function ProjectCard({ project }: { readonly project: Project }) {
+  const router = useRouter();
   const { totalTasks, completedTasks, progress } = calculateProgress(project);
+
+  const handleViewProject = () => {
+    router.push(`/dashboard/projects/${project.id}`);
+  };
 
   return (
     <Card className="hover:shadow-md transition-shadow">
@@ -187,7 +193,11 @@ function ProjectCard({ project }: { readonly project: Project }) {
         </div>
 
         {/* Action Button */}
-        <Button variant="outline" className="w-full">
+        <Button
+          variant="outline"
+          className="w-full"
+          onClick={handleViewProject}
+        >
           View Project
           <ChevronRight className="ml-2 h-4 w-4" />
         </Button>
