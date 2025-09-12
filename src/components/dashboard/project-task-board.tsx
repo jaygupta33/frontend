@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo, useRef } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -22,6 +22,7 @@ import {
 import { useDeleteTask, useUpdateTask } from "@/hooks";
 import { Task, TaskStatus } from "@/types";
 import { TaskDetailModal } from "./task-detail-modal";
+import { CreateTaskModal } from "./create-task-modal";
 import {
   DndContext,
   DragEndEvent,
@@ -77,10 +78,14 @@ function DraggableTaskCard({
   task,
   isUpdating = false,
   onTaskClick,
+  workspaceId,
+  projectId,
 }: {
   readonly task: Task;
   readonly isUpdating?: boolean;
   readonly onTaskClick: (task: Task) => void;
+  readonly workspaceId: string;
+  readonly projectId: string;
 }) {
   const {
     attributes,
@@ -106,7 +111,13 @@ function DraggableTaskCard({
         isDragging ? "opacity-50 rotate-3 scale-105" : ""
       } ${isUpdating ? "opacity-75" : ""} transition-all duration-200`}
     >
-      <TaskCard task={task} isUpdating={isUpdating} onTaskClick={onTaskClick} />
+      <TaskCard
+        task={task}
+        isUpdating={isUpdating}
+        onTaskClick={onTaskClick}
+        workspaceId={workspaceId}
+        projectId={projectId}
+      />
     </div>
   );
 }
@@ -115,23 +126,58 @@ function TaskCard({
   task,
   isUpdating = false,
   onTaskClick,
+  workspaceId,
+  projectId,
 }: {
   readonly task: Task;
   readonly isUpdating?: boolean;
   readonly onTaskClick?: (task: Task) => void;
+  readonly workspaceId: string;
+  readonly projectId: string;
 }) {
   const deleteTaskMutation = useDeleteTask();
 
-  const handleDelete = () => {
-    deleteTaskMutation.mutate({
-      workspaceId: task.workspaceId || "cmf8ny6xw0000g0ickuojpqhj",
-      projectId: task.projectId,
-      taskId: task.id,
-    });
+  const handleDelete = (e: React.MouseEvent) => {
+    e.stopPropagation(); // Prevent event bubbling
+
+    // Show confirmation dialog for delete action
+    if (!confirm("Are you sure you want to delete this task?")) {
+      return;
+    }
+
+    deleteTaskMutation.mutate(
+      {
+        workspaceId,
+        projectId,
+        taskId: task.id,
+      },
+      {
+        onSuccess: () => {
+          // Force close any modal that might be showing this task
+          if (window) {
+            const event = new CustomEvent("task-deleted", {
+              detail: { taskId: task.id },
+            });
+            window.dispatchEvent(event);
+          }
+        },
+        onError: (error) => {
+          console.error("Failed to delete task:", error);
+          alert("Failed to delete task. Please try again.");
+        },
+      }
+    );
   };
 
   const handleCardClick = (e: React.MouseEvent) => {
-    if ((e.target as HTMLElement).closest("[data-dropdown-trigger]")) {
+    // Check if the click originated from dropdown or its children
+    const target = e.target as HTMLElement;
+    if (
+      target.closest("[data-dropdown-trigger]") ||
+      target.closest("[data-radix-popper-content-wrapper]") ||
+      target.closest("[role='menu']") ||
+      target.closest("[data-radix-dropdown-menu-content]")
+    ) {
       return;
     }
     onTaskClick?.(task);
@@ -177,11 +223,15 @@ function TaskCard({
                   size="sm"
                   className="h-6 w-6 p-0"
                   data-dropdown-trigger
+                  onClick={(e) => e.stopPropagation()}
                 >
                   <MoreHorizontal className="h-3 w-3" />
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
+              <DropdownMenuContent
+                align="end"
+                onClick={(e) => e.stopPropagation()}
+              >
                 <DropdownMenuItem>Edit</DropdownMenuItem>
                 <DropdownMenuItem>Duplicate</DropdownMenuItem>
                 <DropdownMenuItem
@@ -257,11 +307,15 @@ function DroppableColumn({
   tasks,
   updatingTaskIds,
   onTaskClick,
+  workspaceId,
+  projectId,
 }: {
   readonly column: { id: string; title: string; status: TaskStatus };
   readonly tasks: Task[];
   readonly updatingTaskIds: Set<string>;
   readonly onTaskClick: (task: Task) => void;
+  readonly workspaceId: string;
+  readonly projectId: string;
 }) {
   const { setNodeRef, isOver } = useDroppable({
     id: column.id,
@@ -305,6 +359,8 @@ function DroppableColumn({
                   task={task}
                   isUpdating={updatingTaskIds.has(task.id)}
                   onTaskClick={onTaskClick}
+                  workspaceId={workspaceId}
+                  projectId={projectId}
                 />
               ))}
             </SortableContext>
@@ -332,7 +388,7 @@ export function ProjectTaskBoard({
   isLoading,
   workspaceId,
   projectId,
-}: ProjectTaskBoardProps) {
+}: Readonly<ProjectTaskBoardProps>) {
   const [activeTask, setActiveTask] = useState<Task | null>(null);
   const [optimisticTasks, setOptimisticTasks] = useState<Task[]>([]);
   const [updatingTaskIds, setUpdatingTaskIds] = useState<Set<string>>(
@@ -340,6 +396,7 @@ export function ProjectTaskBoard({
   );
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
 
   const hasInitializedRef = useRef(false);
   const updateTaskMutation = useUpdateTask();
@@ -356,6 +413,24 @@ export function ProjectTaskBoard({
     setSelectedTask(null);
   };
 
+  // Listen for task deletion events to close modals
+  useEffect(() => {
+    const handleTaskDeleted = (event: CustomEvent) => {
+      if (selectedTask && selectedTask.id === event.detail.taskId) {
+        setIsModalOpen(false);
+        setSelectedTask(null);
+      }
+    };
+
+    window.addEventListener("task-deleted", handleTaskDeleted as EventListener);
+    return () => {
+      window.removeEventListener(
+        "task-deleted",
+        handleTaskDeleted as EventListener
+      );
+    };
+  }, [selectedTask]);
+
   // Use separate state to track if we should use optimistic or server tasks
   const [useOptimistic, setUseOptimistic] = useState(false);
   const displayTasks =
@@ -363,14 +438,22 @@ export function ProjectTaskBoard({
 
   // Update optimistic tasks when server data changes
   useEffect(() => {
-    setUseOptimistic(false);
-    if (tasks.length > 0) {
-      setOptimisticTasks([...tasks]);
-      hasInitializedRef.current = true;
-    } else if (tasks.length === 0 && !isLoading && hasInitializedRef.current) {
-      setOptimisticTasks([]);
+    // Only update if we're not in optimistic mode or if this is initial data
+    if (!useOptimistic || !hasInitializedRef.current) {
+      if (tasks.length > 0) {
+        setOptimisticTasks([...tasks]);
+        hasInitializedRef.current = true;
+        setUseOptimistic(false);
+      } else if (
+        tasks.length === 0 &&
+        !isLoading &&
+        hasInitializedRef.current
+      ) {
+        setOptimisticTasks([]);
+        setUseOptimistic(false);
+      }
     }
-  }, [tasks, isLoading]);
+  }, [tasks, isLoading, useOptimistic]);
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -427,6 +510,9 @@ export function ProjectTaskBoard({
       return;
     }
 
+    // Store original task state for rollback
+    const originalTask = { ...task };
+
     // Optimistically update the local tasks state immediately
     const updatedTasks = displayTasks.map((t: Task) =>
       t.id === taskId ? { ...t, status: newStatus } : t
@@ -436,6 +522,13 @@ export function ProjectTaskBoard({
 
     // Mark task as updating
     setUpdatingTaskIds((prev) => new Set(prev).add(taskId));
+
+    // Helper function to update task in list
+    const updateTaskInList = (
+      tasks: Task[],
+      targetId: string,
+      updatedTask: Task
+    ) => tasks.map((t) => (t.id === targetId ? updatedTask : t));
 
     // Update the task status via API
     updateTaskMutation.mutate(
@@ -447,8 +540,9 @@ export function ProjectTaskBoard({
       },
       {
         onSuccess: (updatedTask) => {
+          // Keep optimistic state until server data refreshes
           setOptimisticTasks((prevTasks) =>
-            prevTasks.map((t) => (t.id === taskId ? updatedTask : t))
+            updateTaskInList(prevTasks, taskId, updatedTask)
           );
           setUpdatingTaskIds((prev) => {
             const next = new Set(prev);
@@ -457,14 +551,16 @@ export function ProjectTaskBoard({
           });
         },
         onError: () => {
+          // Rollback on error
           setOptimisticTasks((prevTasks) =>
-            prevTasks.map((t) => (t.id === taskId ? task : t))
+            updateTaskInList(prevTasks, taskId, originalTask)
           );
           setUpdatingTaskIds((prev) => {
             const next = new Set(prev);
             next.delete(taskId);
             return next;
           });
+          alert("Failed to update task status. Please try again.");
         },
       }
     );
@@ -489,40 +585,53 @@ export function ProjectTaskBoard({
 
   if (isLoading) {
     return (
-      <div className="flex flex-col md:flex-row gap-4 h-[600px]">
-        {columns.map((column) => (
-          <div key={column.id} className="flex-1">
-            <Card className="h-full flex flex-col">
-              <CardHeader className="pb-2 flex-shrink-0">
-                <div className="flex items-center justify-between">
-                  <CardTitle className="text-sm font-medium">
-                    {column.title}
-                  </CardTitle>
-                  <Skeleton className="h-5 w-8" />
-                </div>
-              </CardHeader>
-              <CardContent className="pt-0 flex-1">
-                <div className="space-y-2">
-                  {[1, 2, 3].map((i) => (
-                    <Skeleton key={i} className="h-20 w-full" />
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
+      <div className="flex flex-col h-full space-y-6">
+        <div className="flex items-center justify-between flex-shrink-0">
+          <div className="flex items-center gap-4">
+            <h3 className="text-lg font-medium">Task Board</h3>
+            <Badge variant="secondary">Loading...</Badge>
           </div>
-        ))}
+          <Button disabled>
+            <Plus className="mr-2 h-4 w-4" />
+            Add Task
+          </Button>
+        </div>
+
+        <div className="flex flex-col md:flex-row gap-4 flex-1 min-h-0">
+          {columns.map((column) => (
+            <div key={column.id} className="flex-1 min-h-0">
+              <Card className="h-full flex flex-col">
+                <CardHeader className="pb-2 flex-shrink-0">
+                  <div className="flex items-center justify-between">
+                    <CardTitle className="text-sm font-medium">
+                      {column.title}
+                    </CardTitle>
+                    <Skeleton className="h-5 w-8" />
+                  </div>
+                </CardHeader>
+                <CardContent className="pt-0 flex-1">
+                  <div className="space-y-2">
+                    {[1, 2, 3].map((i) => (
+                      <Skeleton key={i} className="h-20 w-full" />
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          ))}
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between">
+    <div className="flex flex-col h-full space-y-4">
+      <div className="flex items-center justify-between flex-shrink-0">
         <div className="flex items-center gap-4">
           <h3 className="text-lg font-medium">Task Board</h3>
           <Badge variant="secondary">{displayTasks.length} tasks</Badge>
         </div>
-        <Button>
+        <Button onClick={() => setIsCreateModalOpen(true)}>
           <Plus className="mr-2 h-4 w-4" />
           Add Task
         </Button>
@@ -534,16 +643,18 @@ export function ProjectTaskBoard({
         onDragEnd={handleDragEnd}
         onDragOver={handleDragOver}
       >
-        <div className="flex flex-col md:flex-row gap-4 h-[600px]">
+        <div className="flex flex-col md:flex-row gap-4 flex-1 min-h-0">
           {columns.map((column) => {
             const columnTasks = getTasksForColumn(column.status);
             return (
-              <div key={column.id} className="flex-1">
+              <div key={column.id} className="flex-1 min-h-0">
                 <DroppableColumn
                   column={column}
                   tasks={columnTasks}
                   updatingTaskIds={updatingTaskIds}
                   onTaskClick={handleTaskClick}
+                  workspaceId={workspaceId}
+                  projectId={projectId}
                 />
               </div>
             );
@@ -552,7 +663,12 @@ export function ProjectTaskBoard({
 
         <DragOverlay>
           {activeTask ? (
-            <TaskCard task={activeTask} onTaskClick={handleTaskClick} />
+            <TaskCard
+              task={activeTask}
+              onTaskClick={handleTaskClick}
+              workspaceId={workspaceId}
+              projectId={projectId}
+            />
           ) : null}
         </DragOverlay>
       </DndContext>
@@ -561,6 +677,12 @@ export function ProjectTaskBoard({
         task={selectedTask}
         isOpen={isModalOpen}
         onClose={handleModalClose}
+      />
+
+      <CreateTaskModal
+        isOpen={isCreateModalOpen}
+        onClose={() => setIsCreateModalOpen(false)}
+        projectId={projectId}
       />
     </div>
   );

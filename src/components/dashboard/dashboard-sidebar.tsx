@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
 import { useRouter, usePathname } from "next/navigation";
 import { useAuthStore } from "@/stores/authStore";
@@ -41,6 +42,7 @@ import {
   LogOut,
   User,
 } from "lucide-react";
+import { CreateTaskModal } from "./create-task-modal";
 
 const navigationItems = [
   {
@@ -78,9 +80,13 @@ interface DashboardSidebarProps {
   children: React.ReactNode;
 }
 
-export function DashboardSidebar({ children }: DashboardSidebarProps) {
+export function DashboardSidebar({
+  children,
+}: Readonly<DashboardSidebarProps>) {
   const router = useRouter();
   const pathname = usePathname();
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+
   // --- Get user and logout function from Zustand Auth Store ---
   const { user, logout } = useAuthStore();
 
@@ -180,9 +186,9 @@ export function DashboardSidebar({ children }: DashboardSidebarProps) {
                         />
                         <span className="text-sm truncate">{project.name}</span>
                       </div>
-                      {/* Assuming your API provides a tasks array or a _count object */}
+                      {/* Use _count.tasks if available, otherwise fall back to tasks.length */}
                       <Badge variant="secondary" className="text-xs">
-                        {project.tasks?.length ?? 0}
+                        {project._count?.tasks ?? project.tasks?.length ?? 0}
                       </Badge>
                     </SidebarMenuButton>
                   </SidebarMenuItem>
@@ -241,7 +247,11 @@ export function DashboardSidebar({ children }: DashboardSidebarProps) {
           <div className="flex h-14 items-center gap-4 px-4">
             <SidebarTrigger />
             <div className="flex-1" />
-            <Button variant="outline" size="sm">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setIsCreateModalOpen(true)}
+            >
               <Plus className="h-4 w-4 mr-2" />
               New Task
             </Button>
@@ -249,6 +259,14 @@ export function DashboardSidebar({ children }: DashboardSidebarProps) {
         </header>
         <div className="flex-1 overflow-auto p-6">{children}</div>
       </main>
+
+      <CreateTaskModal
+        isOpen={isCreateModalOpen}
+        onClose={() => setIsCreateModalOpen(false)}
+        projectId={
+          currentProject?.id !== "all" ? currentProject?.id : undefined
+        }
+      />
     </SidebarProvider>
   );
 }

@@ -39,6 +39,7 @@ import {
 } from "lucide-react";
 import { Task, TaskStatus, Priority } from "@/types";
 import { TaskDetailModal } from "./task-detail-modal";
+import { CreateTaskModal } from "./create-task-modal";
 import { useDeleteTask } from "@/hooks";
 
 // Priority and status helpers
@@ -163,6 +164,7 @@ export function ProjectTaskList({
   const [priorityFilter, setPriorityFilter] = useState<Priority[]>([]);
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
 
   const deleteTaskMutation = useDeleteTask();
 
@@ -251,7 +253,7 @@ export function ProjectTaskList({
             {filteredTasks.length} of {tasks.length} tasks
           </Badge>
         </div>
-        <Button>
+        <Button onClick={() => setIsCreateModalOpen(true)}>
           <Plus className="mr-2 h-4 w-4" />
           Add Task
         </Button>
@@ -559,6 +561,13 @@ export function ProjectTaskList({
         task={selectedTask}
         isOpen={isModalOpen}
         onClose={handleModalClose}
+      />
+
+      {/* Create Task Modal */}
+      <CreateTaskModal
+        isOpen={isCreateModalOpen}
+        onClose={() => setIsCreateModalOpen(false)}
+        projectId={projectId}
       />
     </div>
   );

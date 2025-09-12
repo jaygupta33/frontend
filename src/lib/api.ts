@@ -116,6 +116,10 @@ export const createTask = async (
     title: string;
     description?: string;
     assigneeId?: string;
+    status?: string;
+    priority?: string;
+    dueDate?: string;
+    tags?: string[];
   }
 ) => {
   const { data } = await apiClient.post(

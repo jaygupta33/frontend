@@ -8,6 +8,7 @@ import {
 } from "@/lib/api";
 import { useWorkspaceStore } from "@/stores/workspaceStore";
 import { Task } from "@/types";
+import { projectKeys } from "./useProjects"; // Import project keys for invalidation
 
 // Query keys for React Query
 export const taskKeys = {
@@ -95,6 +96,10 @@ export const useCreateTask = () => {
         title: string;
         description?: string;
         assigneeId?: string;
+        status?: string;
+        priority?: string;
+        dueDate?: string;
+        tags?: string[];
       };
     }) => createTask(workspaceId, projectId, taskData),
     onSuccess: (newTask: Task, variables) => {
@@ -104,6 +109,16 @@ export const useCreateTask = () => {
       // Invalidate and refetch tasks for this project
       queryClient.invalidateQueries({
         queryKey: taskKeys.list(variables.workspaceId, variables.projectId),
+      });
+
+      // Also invalidate all workspace tasks to ensure consistency across all views
+      queryClient.invalidateQueries({
+        queryKey: taskKeys.allInWorkspace(variables.workspaceId),
+      });
+
+      // Invalidate projects to update task counts in sidebar
+      queryClient.invalidateQueries({
+        queryKey: projectKeys.list(variables.workspaceId),
       });
     },
   });
@@ -138,6 +153,11 @@ export const useUpdateTask = () => {
       queryClient.invalidateQueries({
         queryKey: taskKeys.allInWorkspace(variables.workspaceId),
       });
+
+      // Invalidate projects to update task counts in sidebar (in case of status changes)
+      queryClient.invalidateQueries({
+        queryKey: projectKeys.list(variables.workspaceId),
+      });
     },
   });
 };
@@ -164,6 +184,16 @@ export const useDeleteTask = () => {
       // Invalidate and refetch tasks for this project
       queryClient.invalidateQueries({
         queryKey: taskKeys.list(variables.workspaceId, variables.projectId),
+      });
+
+      // Also invalidate all workspace tasks to ensure consistency across all views
+      queryClient.invalidateQueries({
+        queryKey: taskKeys.allInWorkspace(variables.workspaceId),
+      });
+
+      // Invalidate projects to update task counts in sidebar
+      queryClient.invalidateQueries({
+        queryKey: projectKeys.list(variables.workspaceId),
       });
     },
   });

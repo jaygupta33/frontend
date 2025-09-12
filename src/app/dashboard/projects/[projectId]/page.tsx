@@ -149,37 +149,37 @@ export default function ProjectPage() {
         <TabsList className="h-auto p-0 bg-transparent border-b rounded-none w-full justify-start">
           <TabsTrigger
             value="summary"
-            className="rounded-none border-b-2 border-transparent data-[state=active]:border-blue-500 data-[state=active]:bg-transparent data-[state=active]:shadow-none px-4 py-3"
+            className="rounded-lg border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:text-primary px-4 py-3 font-medium transition-colors hover:text-primary/80"
           >
             Summary
           </TabsTrigger>
           <TabsTrigger
             value="taskboard"
-            className="rounded-none border-b-2 border-transparent data-[state=active]:border-blue-500 data-[state=active]:bg-transparent data-[state=active]:shadow-none px-4 py-3"
+            className="rounded-lg border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:text-primary px-4 py-3 font-medium transition-colors hover:text-primary/80"
           >
             Task Board
           </TabsTrigger>
           <TabsTrigger
             value="tasklist"
-            className="rounded-none border-b-2 border-transparent data-[state=active]:border-blue-500 data-[state=active]:bg-transparent data-[state=active]:shadow-none px-4 py-3"
+            className="rounded-lg border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:text-primary px-4 py-3 font-medium transition-colors hover:text-primary/80"
           >
             Task List
           </TabsTrigger>
           <TabsTrigger
             value="timelog"
-            className="rounded-none border-b-2 border-transparent data-[state=active]:border-blue-500 data-[state=active]:bg-transparent data-[state=active]:shadow-none px-4 py-3"
+            className="rounded-lg border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:text-primary px-4 py-3 font-medium transition-colors hover:text-primary/80"
           >
             Time Log
           </TabsTrigger>
           <TabsTrigger
             value="code"
-            className="rounded-none border-b-2 border-transparent data-[state=active]:border-blue-500 data-[state=active]:bg-transparent data-[state=active]:shadow-none px-4 py-3"
+            className="rounded-lg border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:text-primary px-4 py-3 font-medium transition-colors hover:text-primary/80"
           >
             Code
           </TabsTrigger>
           <TabsTrigger
             value="documents"
-            className="rounded-none border-b-2 border-transparent data-[state=active]:border-blue-500 data-[state=active]:bg-transparent data-[state=active]:shadow-none px-4 py-3"
+            className="rounded-lg border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:text-primary px-4 py-3 font-medium transition-colors hover:text-primary/80"
           >
             Documents
           </TabsTrigger>
@@ -189,7 +189,10 @@ export default function ProjectPage() {
           <ProjectSummary project={project} tasks={projectTasks} />
         </TabsContent>
 
-        <TabsContent value="taskboard" className="mt-6">
+        <TabsContent
+          value="taskboard"
+          className="mt-6 h-[calc(100vh-300px)] min-h-[600px]"
+        >
           <ProjectTaskBoard
             tasks={projectTasks}
             isLoading={tasksLoading}

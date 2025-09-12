@@ -22,34 +22,6 @@ import { useWorkspaces } from "@/hooks/useWorkspaces";
 import { TaskStatus, Priority } from "@/types";
 import { useMemo, useEffect } from "react";
 
-// Mock data for features not yet implemented
-const mockTeamMembers = [
-  { id: "1", name: "Alice Johnson", role: "ADMIN" },
-  { id: "2", name: "Bob Smith", role: "MEMBER" },
-  { id: "3", name: "Carol Davis", role: "MEMBER" },
-  { id: "4", name: "David Wilson", role: "MEMBER" },
-  { id: "5", name: "Emma Brown", role: "MEMBER" },
-  { id: "6", name: "Frank Miller", role: "MEMBER" },
-  { id: "7", name: "Grace Taylor", role: "MEMBER" },
-  { id: "8", name: "Henry Johnson", role: "MEMBER" },
-];
-
-const mockAssignees = [
-  "Alice Johnson",
-  "Bob Smith",
-  "Carol Davis",
-  "David Wilson",
-  "Emma Brown",
-  "Frank Miller",
-  "Grace Taylor",
-  "Henry Johnson",
-];
-
-// Utility functions
-function getRandomAssignee() {
-  return mockAssignees[Math.floor(Math.random() * mockAssignees.length)];
-}
-
 function formatDate(dateString: string) {
   const date = new Date(dateString);
   const today = new Date();
@@ -115,11 +87,6 @@ export function DashboardOverview() {
     }
   }, [workspaces, currentWorkspace, setCurrentWorkspace]);
 
-  // Debug: Log the current workspace
-  console.log("Dashboard - Current workspace:", currentWorkspace);
-  console.log("Dashboard - User:", user);
-  console.log("Dashboard - Available workspaces:", workspaces);
-
   // Fetch data using hooks
   const {
     data: tasks = [],
@@ -135,14 +102,6 @@ export function DashboardOverview() {
     isLoading: projectsLoading,
     error: projectsError,
   } = useProjects(currentWorkspace?.id || "");
-
-  // Debug: Log the fetched data
-  console.log("Dashboard - Tasks:", tasks);
-  console.log("Dashboard - Tasks loading:", tasksLoading);
-  console.log("Dashboard - Tasks error:", tasksError);
-  console.log("Dashboard - Projects:", projects);
-  console.log("Dashboard - Projects loading:", projectsLoading);
-  console.log("Dashboard - Projects error:", projectsError);
 
   // Calculate statistics from real data
   const stats = useMemo(() => {
@@ -175,7 +134,7 @@ export function DashboardOverview() {
       },
       {
         title: "Team Members",
-        value: mockTeamMembers.length.toString(),
+        value: "8", // TODO: Replace with actual team member count
         change: "+2", // Mock change
         trend: "up",
         icon: Users,
@@ -198,10 +157,7 @@ export function DashboardOverview() {
       (a, b) =>
         new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
     );
-    return sortedTasks.slice(0, 4).map((task) => ({
-      ...task,
-      assignee: getRandomAssignee(), // Mock assignee since we don't have user names in tasks yet
-    }));
+    return sortedTasks.slice(0, 4);
   }, [tasks]);
 
   // Get upcoming deadlines (tasks due soon)
@@ -383,7 +339,7 @@ export function DashboardOverview() {
                       <div className="flex items-center gap-2 text-sm text-muted-foreground">
                         <span>{task.projectName || "No Project"}</span>
                         <span>•</span>
-                        <span>{task.assignee}</span>
+                        <span>{task.assignee?.username || "Unassigned"}</span>
                       </div>
                     </div>
                     <div className="flex items-center gap-2">

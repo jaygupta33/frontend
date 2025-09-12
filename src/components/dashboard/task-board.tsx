@@ -28,6 +28,7 @@ import { useWorkspaceStore } from "@/stores/workspaceStore";
 import { Task, TaskStatus } from "@/types";
 import { ProjectSelector } from "./project-selector";
 import { TaskDetailModal } from "./task-detail-modal";
+import { CreateTaskModal } from "./create-task-modal";
 import {
   DndContext,
   DragEndEvent,
@@ -85,11 +86,13 @@ function DraggableTaskCard({
   showProjectName = false,
   isUpdating = false,
   onTaskClick,
+  onTaskDelete,
 }: {
   readonly task: Task;
   readonly showProjectName?: boolean;
   readonly isUpdating?: boolean;
   readonly onTaskClick: (task: Task) => void;
+  readonly onTaskDelete?: (taskId: string) => void;
 }) {
   const {
     attributes,
@@ -120,6 +123,7 @@ function DraggableTaskCard({
         showProjectName={showProjectName}
         isUpdating={isUpdating}
         onTaskClick={onTaskClick}
+        onTaskDelete={onTaskDelete}
       />
     </div>
   );
@@ -130,11 +134,13 @@ function TaskCard({
   showProjectName = false,
   isUpdating = false,
   onTaskClick,
+  onTaskDelete,
 }: {
   readonly task: Task;
   readonly showProjectName?: boolean;
   readonly isUpdating?: boolean;
   readonly onTaskClick?: (task: Task) => void;
+  readonly onTaskDelete?: (taskId: string) => void;
 }) {
   const { currentWorkspace, currentProject } = useWorkspaceStore();
   const deleteTaskMutation = useDeleteTask();
@@ -142,17 +148,43 @@ function TaskCard({
   const workspaceId = currentWorkspace?.id || "cmf8ny6xw0000g0ickuojpqhj";
   const projectId = currentProject?.id || task.projectId;
 
-  const handleDelete = () => {
-    deleteTaskMutation.mutate({
-      workspaceId,
-      projectId,
-      taskId: task.id,
-    });
+  const handleDelete = (e: React.MouseEvent) => {
+    e.stopPropagation(); // Prevent event bubbling
+
+    // Show confirmation dialog for delete action
+    if (!confirm("Are you sure you want to delete this task?")) {
+      return;
+    }
+
+    deleteTaskMutation.mutate(
+      {
+        workspaceId,
+        projectId,
+        taskId: task.id,
+      },
+      {
+        onSuccess: () => {
+          // Call the callback to handle any UI updates (like closing modals)
+          onTaskDelete?.(task.id);
+        },
+        onError: (error) => {
+          console.error("Failed to delete task:", error);
+          // You could show a toast notification here
+          alert("Failed to delete task. Please try again.");
+        },
+      }
+    );
   };
 
   const handleCardClick = (e: React.MouseEvent) => {
-    // Prevent modal from opening when clicking on dropdown menu
-    if ((e.target as HTMLElement).closest("[data-dropdown-trigger]")) {
+    // Check if the click originated from dropdown or its children
+    const target = e.target as HTMLElement;
+    if (
+      target.closest("[data-dropdown-trigger]") ||
+      target.closest("[data-radix-popper-content-wrapper]") ||
+      target.closest("[role='menu']") ||
+      target.closest("[data-radix-dropdown-menu-content]")
+    ) {
       return;
     }
     onTaskClick?.(task);
@@ -204,11 +236,15 @@ function TaskCard({
                   size="sm"
                   className="h-6 w-6 p-0"
                   data-dropdown-trigger
+                  onClick={(e) => e.stopPropagation()}
                 >
                   <MoreHorizontal className="h-3 w-3" />
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
+              <DropdownMenuContent
+                align="end"
+                onClick={(e) => e.stopPropagation()}
+              >
                 <DropdownMenuItem>Edit</DropdownMenuItem>
                 <DropdownMenuItem>Duplicate</DropdownMenuItem>
                 <DropdownMenuItem
@@ -285,12 +321,16 @@ function DroppableColumn({
   showProjectName,
   updatingTaskIds,
   onTaskClick,
+  onAddTask,
+  onTaskDelete,
 }: {
   readonly column: { id: string; title: string; status: TaskStatus };
   readonly tasks: Task[];
   readonly showProjectName: boolean;
   readonly updatingTaskIds: Set<string>;
   readonly onTaskClick: (task: Task) => void;
+  readonly onAddTask: (status: TaskStatus) => void;
+  readonly onTaskDelete?: (taskId: string) => void;
 }) {
   const { setNodeRef, isOver } = useDroppable({
     id: column.id,
@@ -308,7 +348,12 @@ function DroppableColumn({
               <Badge variant="secondary" className="text-xs">
                 {tasks.length}
               </Badge>
-              <Button variant="ghost" size="sm" className="h-6 w-6 p-0">
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-6 w-6 p-0"
+                onClick={() => onAddTask(column.status)}
+              >
                 <Plus className="h-3 w-3" />
               </Button>
             </div>
@@ -335,6 +380,7 @@ function DroppableColumn({
                   showProjectName={showProjectName}
                   isUpdating={updatingTaskIds.has(task.id)}
                   onTaskClick={onTaskClick}
+                  onTaskDelete={onTaskDelete}
                 />
               ))}
             </SortableContext>
@@ -359,6 +405,7 @@ export function TaskBoard() {
   );
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
 
   // Use ref to track initialization to prevent Edge browser issues
   const hasInitializedRef = useRef(false);
@@ -392,10 +439,29 @@ export function TaskBoard() {
     setIsModalOpen(true);
   };
 
+  // Handle task deletion - close modal if the deleted task is currently selected
+  const handleTaskDelete = (deletedTaskId: string) => {
+    if (selectedTask && selectedTask.id === deletedTaskId) {
+      setIsModalOpen(false);
+      setSelectedTask(null);
+    }
+  };
+
   // Handle modal close
   const handleModalClose = () => {
     setIsModalOpen(false);
     setSelectedTask(null);
+  };
+
+  // Handle create modal close
+  const handleCreateModalClose = () => {
+    setIsCreateModalOpen(false);
+  };
+
+  // Handle adding task from column
+  const handleAddTaskFromColumn = (status: TaskStatus) => {
+    setIsCreateModalOpen(true);
+    // We could pre-set the status here if needed
   };
 
   // Determine which data to use - prioritize optimistic tasks for instant updates
@@ -675,7 +741,7 @@ export function TaskBoard() {
           </div>
           <div className="flex items-center gap-4">
             <ProjectSelector />
-            <Button>
+            <Button onClick={() => setIsCreateModalOpen(true)}>
               <Plus className="mr-2 h-4 w-4" />
               Add Task
             </Button>
@@ -693,6 +759,8 @@ export function TaskBoard() {
                   showProjectName={isAllProjects}
                   updatingTaskIds={updatingTaskIds}
                   onTaskClick={handleTaskClick}
+                  onAddTask={handleAddTaskFromColumn}
+                  onTaskDelete={handleTaskDelete}
                 />
               </div>
             );
@@ -706,6 +774,7 @@ export function TaskBoard() {
             task={activeTask}
             showProjectName={isAllProjects}
             onTaskClick={handleTaskClick}
+            onTaskDelete={handleTaskDelete}
           />
         ) : null}
       </DragOverlay>
@@ -714,6 +783,12 @@ export function TaskBoard() {
         task={selectedTask}
         isOpen={isModalOpen}
         onClose={handleModalClose}
+      />
+
+      <CreateTaskModal
+        isOpen={isCreateModalOpen}
+        onClose={handleCreateModalClose}
+        projectId={isAllProjects ? undefined : projectId}
       />
     </DndContext>
   );

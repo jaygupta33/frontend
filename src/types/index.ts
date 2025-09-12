@@ -109,7 +109,7 @@ export interface Task {
   assigneeId?: string | null;
   projectId: string;
   project?: Project; // Relation: Populated on the frontend
-  projectName?: string; // Flat project name (used in getAllTasksInWorkspace)
+  projectName?: string; // Flat project name for easier access
   assignee?: User | null; // Relation: Populated on the frontend
   comments: Comment[];
   createdAt: string; // ISO date string
