@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { useState } from "react";
 import { useAuthStore } from "@/stores/authStore";
 import { useRouter } from "next/navigation"; // Import the router
+import { Input } from "@/components/ui/input";
 
 const LoginPage = () => {
   const [username, setUsername] = useState<string>("");
@@ -49,11 +50,18 @@ const LoginPage = () => {
   };
 
   return (
-    <div className="flex flex-col items-center justify-center min-h-screen">
-      <div className="w-full max-w-xs space-y-4">
+    <div
+      className="flex flex-col items-center justify-center min-h-screen"
+      onKeyDown={(e) => {
+        if (e.key === "Enter") {
+          handleLogin();
+        }
+      }}
+    >
+      <div className="w-full max-w-xs space-y-4 bg-white p-6 rounded-lg shadow-md">
         <h1 className="text-2xl font-bold text-center">Login</h1>
         {/* Simple text inputs, you can replace these with Shadcn Input components */}
-        <input
+        <Input
           type="text"
           placeholder="Username"
           value={username}
@@ -61,7 +69,7 @@ const LoginPage = () => {
           className="w-full px-3 py-2 border rounded-md text-black"
           disabled={isLoading}
         />
-        <input
+        <Input
           type="password"
           placeholder="Password"
           value={password}
