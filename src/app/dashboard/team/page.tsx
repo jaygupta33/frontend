@@ -1,5 +1,7 @@
-import { TeamOverview } from "@/components/dashboard/team-overview";
+"use client";
 
-export default function TeamPage() {
-  return <TeamOverview />;
+import { TeamsOverview } from "@/components/dashboard/teams-overview";
+
+export default function TeamsPage() {
+  return <TeamsOverview />;
 }
