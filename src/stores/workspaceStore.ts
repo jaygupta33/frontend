@@ -18,7 +18,7 @@ interface WorkspaceState {
   error: string | null;
 
   // Actions for workspace management
-  setCurrentWorkspace: (workspace: Workspace) => void;
+  setCurrentWorkspace: (workspace: Workspace | null) => void;
   setWorkspaces: (workspaces: Workspace[]) => void;
   addWorkspace: (workspace: Workspace) => void;
   clearWorkspaces: () => void;
@@ -55,7 +55,19 @@ export const useWorkspaceStore = create(
       error: null,
 
       // Workspace actions
-      setCurrentWorkspace: (workspace) => set({ currentWorkspace: workspace }),
+      setCurrentWorkspace: (workspace) => {
+        const currentState = get();
+        // Clear current project if workspace is null or if project doesn't belong to the new workspace
+        const shouldClearProject =
+          !workspace ||
+          (currentState.currentProject &&
+            currentState.currentProject.workspaceId !== workspace.id);
+
+        set({
+          currentWorkspace: workspace,
+          ...(shouldClearProject && { currentProject: null }),
+        });
+      },
       setWorkspaces: (workspaces) => set({ workspaces }),
       addWorkspace: (workspace) => {
         const { workspaces } = get();

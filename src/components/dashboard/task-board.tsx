@@ -145,7 +145,6 @@ function TaskCard({
   const { currentWorkspace, currentProject } = useWorkspaceStore();
   const deleteTaskMutation = useDeleteTask();
 
-  const workspaceId = currentWorkspace?.id || "cmf8ny6xw0000g0ickuojpqhj";
   const projectId = currentProject?.id || task.projectId;
 
   const handleDelete = (e: React.MouseEvent) => {
@@ -158,7 +157,7 @@ function TaskCard({
 
     deleteTaskMutation.mutate(
       {
-        workspaceId,
+        workspaceId: currentWorkspace?.id || "",
         projectId,
         taskId: task.id,
       },
@@ -411,7 +410,6 @@ export function TaskBoard() {
   const hasInitializedRef = useRef(false);
 
   // Use the workspace ID and current project from store
-  const workspaceId = currentWorkspace?.id || "cmf8ny6xw0000g0ickuojpqhj";
   const projectId = currentProject?.id;
   const isAllProjects = projectId === "all";
 
@@ -421,14 +419,17 @@ export function TaskBoard() {
     isLoading: isProjectLoading,
     isError: isProjectError,
     error: projectError,
-  } = useTasks(workspaceId, projectId && !isAllProjects ? projectId : "skip");
+  } = useTasks(
+    currentWorkspace?.id || "",
+    projectId && !isAllProjects ? projectId : "skip"
+  );
 
   const {
     data: allWorkspaceTasks = [],
     isLoading: isAllTasksLoading,
     isError: isAllTasksError,
     error: allTasksError,
-  } = useAllTasksInWorkspace(workspaceId, isAllProjects);
+  } = useAllTasksInWorkspace(currentWorkspace?.id || "", isAllProjects);
 
   // Update task mutation
   const updateTaskMutation = useUpdateTask();
@@ -576,7 +577,7 @@ export function TaskBoard() {
     // Update the task status via API (this will happen in the background)
     updateTaskMutation.mutate(
       {
-        workspaceId,
+        workspaceId: currentWorkspace?.id || "",
         projectId: task.projectId,
         taskId,
         updates: { status: newStatus },

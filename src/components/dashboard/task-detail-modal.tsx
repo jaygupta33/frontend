@@ -117,7 +117,6 @@ export function TaskDetailModal({
 
   if (!task) return null;
 
-  const workspaceId = currentWorkspace?.id || "cmf8ny6xw0000g0ickuojpqhj";
   const projectId =
     currentProject?.id === "all"
       ? task.projectId
@@ -126,10 +125,10 @@ export function TaskDetailModal({
   // Get the latest task data from the query cache
   const getLatestTask = () => {
     const projectTasks = queryClient.getQueryData(
-      taskKeys.list(workspaceId, projectId)
+      taskKeys.list(currentWorkspace?.id || "", projectId)
     );
     const allTasks = queryClient.getQueryData(
-      taskKeys.allInWorkspace(workspaceId)
+      taskKeys.allInWorkspace(currentWorkspace?.id || "")
     );
 
     const tasks = currentProject?.id === "all" ? allTasks : projectTasks;
@@ -224,7 +223,7 @@ export function TaskDetailModal({
   const handleAddComment = () => {
     console.log("handleAddComment called");
     console.log("newComment:", newComment);
-    console.log("workspaceId:", workspaceId);
+    console.log("workspaceId:", currentWorkspace?.id);
     console.log("projectId:", projectId);
     console.log("taskId:", task.id);
 
@@ -233,7 +232,7 @@ export function TaskDetailModal({
       return;
     }
 
-    if (!workspaceId) {
+    if (!currentWorkspace?.id) {
       console.error("Workspace ID is missing");
       return;
     }
@@ -244,7 +243,7 @@ export function TaskDetailModal({
     }
 
     console.log("Starting mutation with data:", {
-      workspaceId,
+      workspaceId: currentWorkspace?.id,
       projectId,
       taskId: task.id,
       content: newComment.trim(),
@@ -252,7 +251,7 @@ export function TaskDetailModal({
 
     addCommentMutation.mutate(
       {
-        workspaceId,
+        workspaceId: currentWorkspace?.id || "",
         projectId,
         taskId: task.id,
         content: newComment.trim(),
@@ -264,20 +263,20 @@ export function TaskDetailModal({
 
           // Force invalidate and refetch all related queries
           queryClient.invalidateQueries({
-            queryKey: taskKeys.list(workspaceId, projectId),
+            queryKey: taskKeys.list(currentWorkspace?.id || "", projectId),
           });
 
           queryClient.invalidateQueries({
-            queryKey: taskKeys.allInWorkspace(workspaceId),
+            queryKey: taskKeys.allInWorkspace(currentWorkspace?.id || ""),
           });
 
           // Force refetch to ensure UI updates immediately
           queryClient.refetchQueries({
-            queryKey: taskKeys.list(workspaceId, projectId),
+            queryKey: taskKeys.list(currentWorkspace?.id || "", projectId),
           });
 
           queryClient.refetchQueries({
-            queryKey: taskKeys.allInWorkspace(workspaceId),
+            queryKey: taskKeys.allInWorkspace(currentWorkspace?.id || ""),
           });
         },
         onError: (error) => {

@@ -43,6 +43,8 @@ import {
   User,
 } from "lucide-react";
 import { CreateTaskModal } from "./create-task-modal";
+import { CreateProjectModal } from "./create-project-modal";
+import { WorkspaceSelector } from "./workspace-selector";
 
 const navigationItems = [
   {
@@ -86,6 +88,8 @@ export function DashboardSidebar({
   const router = useRouter();
   const pathname = usePathname();
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [isCreateProjectModalOpen, setIsCreateProjectModalOpen] =
+    useState(false);
 
   // --- Get user and logout function from Zustand Auth Store ---
   const { user, logout } = useAuthStore();
@@ -94,11 +98,12 @@ export function DashboardSidebar({
   const { currentWorkspace, currentProject, setCurrentProject } =
     useWorkspaceStore();
 
-  // --- Use the hardcoded workspace ID if no current workspace is set ---
-  const workspaceId = currentWorkspace?.id || "cmf8ny6xw0000g0ickuojpqhj";
-
-  // --- Use the new Projects hook ---
-  const { data: projects = [], isLoading, isError } = useProjects(workspaceId);
+  // --- Use the projects hook with current workspace ID ---
+  const {
+    data: projects = [],
+    isLoading,
+    isError,
+  } = useProjects(currentWorkspace?.id || "");
 
   const handleLogout = () => {
     logout();
@@ -114,6 +119,9 @@ export function DashboardSidebar({
     <SidebarProvider>
       <Sidebar className="border-r">
         <SidebarContent>
+          {/* Workspace Selector */}
+          <WorkspaceSelector />
+
           {/* Logo Section */}
           <SidebarGroup>
             <div className="flex items-center gap-2 px-4 py-2">
@@ -156,43 +164,72 @@ export function DashboardSidebar({
           <SidebarGroup>
             <SidebarGroupLabel className="flex items-center justify-between">
               <span>Projects</span>
-              <Button variant="ghost" size="sm" className="h-6 w-6 p-0">
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-6 w-6 p-0"
+                onClick={() => setIsCreateProjectModalOpen(true)}
+                disabled={!currentWorkspace}
+              >
                 <Plus className="h-3 w-3" />
               </Button>
             </SidebarGroupLabel>
             <SidebarGroupContent>
               <SidebarMenu>
-                {isLoading && (
+                {!currentWorkspace && (
+                  <SidebarMenuItem className="text-muted-foreground text-sm px-4 py-2">
+                    Select a workspace to view projects
+                  </SidebarMenuItem>
+                )}
+
+                {currentWorkspace && isLoading && (
                   <SidebarMenuItem>Loading projects...</SidebarMenuItem>
                 )}
-                {isError && (
+
+                {currentWorkspace && isError && (
                   <SidebarMenuItem className="text-red-500">
                     Failed to load
                   </SidebarMenuItem>
                 )}
-                {projects?.map((project, index) => (
-                  <SidebarMenuItem key={project.id}>
-                    <SidebarMenuButton
-                      className={`flex items-center justify-between w-full cursor-pointer ${
-                        currentProject?.id === project.id ? "bg-accent" : ""
-                      }`}
-                      onClick={() => handleProjectSelect(project)}
-                    >
-                      <div className="flex items-center gap-2">
-                        <div
-                          className={`h-2 w-2 rounded-full ${
-                            projectColors[index % projectColors.length]
-                          }`}
-                        />
-                        <span className="text-sm truncate">{project.name}</span>
-                      </div>
-                      {/* Use _count.tasks if available, otherwise fall back to tasks.length */}
-                      <Badge variant="secondary" className="text-xs">
-                        {project._count?.tasks ?? project.tasks?.length ?? 0}
-                      </Badge>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                ))}
+
+                {currentWorkspace &&
+                  !isLoading &&
+                  !isError &&
+                  projects?.length > 0 &&
+                  projects.map((project, index) => (
+                    <SidebarMenuItem key={project.id}>
+                      <SidebarMenuButton
+                        className={`flex items-center justify-between w-full cursor-pointer ${
+                          currentProject?.id === project.id ? "bg-accent" : ""
+                        }`}
+                        onClick={() => handleProjectSelect(project)}
+                      >
+                        <div className="flex items-center gap-2">
+                          <div
+                            className={`h-2 w-2 rounded-full ${
+                              projectColors[index % projectColors.length]
+                            }`}
+                          />
+                          <span className="text-sm truncate">
+                            {project.name}
+                          </span>
+                        </div>
+                        {/* Use _count.tasks if available, otherwise fall back to tasks.length */}
+                        <Badge variant="secondary" className="text-xs">
+                          {project._count?.tasks ?? project.tasks?.length ?? 0}
+                        </Badge>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                  ))}
+
+                {currentWorkspace &&
+                  !isLoading &&
+                  !isError &&
+                  projects?.length === 0 && (
+                    <SidebarMenuItem className="text-muted-foreground text-sm px-4 py-2">
+                      No projects found
+                    </SidebarMenuItem>
+                  )}
               </SidebarMenu>
             </SidebarGroupContent>
           </SidebarGroup>
@@ -266,6 +303,11 @@ export function DashboardSidebar({
         projectId={
           currentProject?.id !== "all" ? currentProject?.id : undefined
         }
+      />
+
+      <CreateProjectModal
+        isOpen={isCreateProjectModalOpen}
+        onClose={() => setIsCreateProjectModalOpen(false)}
       />
     </SidebarProvider>
   );

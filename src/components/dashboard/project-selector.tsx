@@ -12,7 +12,7 @@ import { Badge } from "@/components/ui/badge";
 import { FolderOpen } from "lucide-react";
 import { useProjects } from "@/hooks";
 import { useWorkspaceStore } from "@/stores/workspaceStore";
-import { Project } from "@/types";
+import { Project, Priority, ProjectStatus } from "@/types";
 
 interface ProjectSelectorProps {
   readonly onProjectSelect?: (project: Project) => void;
@@ -22,18 +22,20 @@ export function ProjectSelector({ onProjectSelect }: ProjectSelectorProps) {
   const { currentWorkspace, currentProject, setCurrentProject } =
     useWorkspaceStore();
 
-  const workspaceId = currentWorkspace?.id || "cmf8ny6xw0000g0ickuojpqhj";
-
-  const { data: projects = [], isLoading } = useProjects(workspaceId);
+  const { data: projects = [], isLoading } = useProjects(
+    currentWorkspace?.id || ""
+  );
 
   const handleSelect = (value: string) => {
     if (value === "all") {
       // Create a special "All Projects" project object
-      const allProjectsOption = {
+      const allProjectsOption: Project = {
         id: "all",
         name: "All Projects",
-        workspaceId,
+        workspaceId: currentWorkspace?.id || "",
         tasks: [],
+        priority: Priority.MEDIUM,
+        projectStatus: ProjectStatus.ACTIVE,
         createdAt: new Date().toISOString(),
       };
       setCurrentProject(allProjectsOption);

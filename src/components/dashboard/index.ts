@@ -6,3 +6,5 @@ export { TeamOverview } from "./team-overview";
 export { ProjectSelector } from "./project-selector";
 export { TaskDetailModal } from "./task-detail-modal";
 export { CreateTaskModal } from "./create-task-modal";
+export { CreateProjectModal } from "./create-project-modal";
+export { WorkspaceSelector } from "./workspace-selector";

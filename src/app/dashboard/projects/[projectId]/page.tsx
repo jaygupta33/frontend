@@ -28,12 +28,13 @@ export default function ProjectPage() {
   const projectId = params.projectId as string;
 
   const { currentWorkspace } = useWorkspaceStore();
-  const workspaceId = currentWorkspace?.id || "cmf8ny6xw0000g0ickuojpqhj";
 
-  const { data: projects = [], isLoading: projectsLoading } =
-    useProjects(workspaceId);
-  const { data: tasks = [], isLoading: tasksLoading } =
-    useAllTasksInWorkspace(workspaceId);
+  const { data: projects = [], isLoading: projectsLoading } = useProjects(
+    currentWorkspace?.id || ""
+  );
+  const { data: tasks = [], isLoading: tasksLoading } = useAllTasksInWorkspace(
+    currentWorkspace?.id || ""
+  );
 
   const project = projects.find((p) => p.id === projectId);
   const projectTasks = tasks.filter((t) => t.projectId === projectId);
@@ -196,7 +197,7 @@ export default function ProjectPage() {
           <ProjectTaskBoard
             tasks={projectTasks}
             isLoading={tasksLoading}
-            workspaceId={workspaceId}
+            workspaceId={currentWorkspace?.id || ""}
             projectId={projectId}
           />
         </TabsContent>
@@ -205,7 +206,7 @@ export default function ProjectPage() {
           <ProjectTaskList
             tasks={projectTasks}
             isLoading={tasksLoading}
-            workspaceId={workspaceId}
+            workspaceId={currentWorkspace?.id || ""}
             projectId={projectId}
           />
         </TabsContent>

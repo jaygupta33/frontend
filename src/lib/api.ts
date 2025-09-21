@@ -93,10 +93,19 @@ export const getWorkspaceMembers = async (
 };
 
 // ============ PROJECT API FUNCTIONS ============
-export const createProject = async (workspaceId: string, name: string) => {
+export const createProject = async (
+  workspaceId: string,
+  projectData: {
+    name: string;
+    description?: string | null;
+    priority?: string;
+    projectStatus?: string;
+    dueDate?: string | null;
+  }
+) => {
   const { data } = await apiClient.post(
     `/dashboard/workspaces/${workspaceId}/projects/create`,
-    { name }
+    projectData
   );
   return data.project;
 };

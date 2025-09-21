@@ -1,5 +1,7 @@
 "use client";
 
+import { useState } from "react";
+
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -25,6 +27,7 @@ import { useProjects } from "@/hooks/useProjects";
 import { useWorkspaceStore } from "@/stores/workspaceStore";
 import { Project, ProjectStatus, Priority } from "@/types";
 import { Skeleton } from "@/components/ui/skeleton";
+import { CreateProjectModal } from "./create-project-modal";
 
 // Mock team data - keeping as requested
 const mockTeam = [
@@ -207,10 +210,15 @@ function ProjectCard({ project }: { readonly project: Project }) {
 }
 
 export function ProjectOverview() {
+  const [isCreateProjectModalOpen, setIsCreateProjectModalOpen] =
+    useState(false);
   const { currentWorkspace } = useWorkspaceStore();
-  const workspaceId = currentWorkspace?.id || "cmf8ny6xw0000g0ickuojpqhj";
 
-  const { data: projects = [], isLoading, isError } = useProjects(workspaceId);
+  const {
+    data: projects = [],
+    isLoading,
+    isError,
+  } = useProjects(currentWorkspace?.id || "");
 
   const activeProjects = projects.filter(
     (p) => p.projectStatus === ProjectStatus.ACTIVE
@@ -232,7 +240,7 @@ export function ProjectOverview() {
               Manage and track progress across all your projects
             </p>
           </div>
-          <Button>
+          <Button onClick={() => setIsCreateProjectModalOpen(true)}>
             <Plus className="mr-2 h-4 w-4" />
             New Project
           </Button>
@@ -280,7 +288,7 @@ export function ProjectOverview() {
               Manage and track progress across all your projects
             </p>
           </div>
-          <Button>
+          <Button onClick={() => setIsCreateProjectModalOpen(true)}>
             <Plus className="mr-2 h-4 w-4" />
             New Project
           </Button>
@@ -295,116 +303,125 @@ export function ProjectOverview() {
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Projects</h1>
-          <p className="text-muted-foreground">
-            Manage and track progress across all your projects
-          </p>
-        </div>
-        <Button>
-          <Plus className="mr-2 h-4 w-4" />
-          New Project
-        </Button>
-      </div>
-
-      {/* Project Stats */}
-      <div className="grid gap-4 md:grid-cols-4">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">
-              Total Projects
-            </CardTitle>
-            <CheckSquare className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{projects.length}</div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Active</CardTitle>
-            <Clock className="h-4 w-4 text-chart-2" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{activeProjects.length}</div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Completed</CardTitle>
-            <CheckSquare className="h-4 w-4 text-chart-1" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{completedProjects.length}</div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">On Hold</CardTitle>
-            <Clock className="h-4 w-4 text-chart-3" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{onHoldProjects.length}</div>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Active Projects */}
-      {activeProjects.length > 0 && (
-        <div className="space-y-4">
-          <h2 className="text-xl font-semibold">Active Projects</h2>
-          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-            {activeProjects.map((project) => (
-              <ProjectCard key={project.id} project={project} />
-            ))}
+    <>
+      <div className="space-y-6">
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold tracking-tight">Projects</h1>
+            <p className="text-muted-foreground">
+              Manage and track progress across all your projects
+            </p>
           </div>
+          <Button onClick={() => setIsCreateProjectModalOpen(true)}>
+            <Plus className="mr-2 h-4 w-4" />
+            New Project
+          </Button>
         </div>
-      )}
 
-      {/* Completed Projects */}
-      {completedProjects.length > 0 && (
-        <div className="space-y-4">
-          <h2 className="text-xl font-semibold">Completed Projects</h2>
-          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-            {completedProjects.map((project) => (
-              <ProjectCard key={project.id} project={project} />
-            ))}
-          </div>
+        {/* Project Stats */}
+        <div className="grid gap-4 md:grid-cols-4">
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">
+                Total Projects
+              </CardTitle>
+              <CheckSquare className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{projects.length}</div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Active</CardTitle>
+              <Clock className="h-4 w-4 text-chart-2" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{activeProjects.length}</div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Completed</CardTitle>
+              <CheckSquare className="h-4 w-4 text-chart-1" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">
+                {completedProjects.length}
+              </div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">On Hold</CardTitle>
+              <Clock className="h-4 w-4 text-chart-3" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{onHoldProjects.length}</div>
+            </CardContent>
+          </Card>
         </div>
-      )}
 
-      {/* On Hold Projects */}
-      {onHoldProjects.length > 0 && (
-        <div className="space-y-4">
-          <h2 className="text-xl font-semibold">On Hold Projects</h2>
-          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-            {onHoldProjects.map((project) => (
-              <ProjectCard key={project.id} project={project} />
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* Empty state */}
-      {projects.length === 0 && (
-        <Card className="p-6">
-          <div className="text-center space-y-4">
-            <CheckSquare className="h-12 w-12 mx-auto text-muted-foreground" />
-            <div>
-              <h3 className="text-lg font-medium">No projects yet</h3>
-              <p className="text-muted-foreground">
-                Get started by creating your first project
-              </p>
+        {/* Active Projects */}
+        {activeProjects.length > 0 && (
+          <div className="space-y-4">
+            <h2 className="text-xl font-semibold">Active Projects</h2>
+            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+              {activeProjects.map((project) => (
+                <ProjectCard key={project.id} project={project} />
+              ))}
             </div>
-            <Button>
-              <Plus className="mr-2 h-4 w-4" />
-              Create Project
-            </Button>
           </div>
-        </Card>
-      )}
-    </div>
+        )}
+
+        {/* Completed Projects */}
+        {completedProjects.length > 0 && (
+          <div className="space-y-4">
+            <h2 className="text-xl font-semibold">Completed Projects</h2>
+            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+              {completedProjects.map((project) => (
+                <ProjectCard key={project.id} project={project} />
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* On Hold Projects */}
+        {onHoldProjects.length > 0 && (
+          <div className="space-y-4">
+            <h2 className="text-xl font-semibold">On Hold Projects</h2>
+            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+              {onHoldProjects.map((project) => (
+                <ProjectCard key={project.id} project={project} />
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Empty state */}
+        {projects.length === 0 && (
+          <Card className="p-6">
+            <div className="text-center space-y-4">
+              <CheckSquare className="h-12 w-12 mx-auto text-muted-foreground" />
+              <div>
+                <h3 className="text-lg font-medium">No projects yet</h3>
+                <p className="text-muted-foreground">
+                  Get started by creating your first project
+                </p>
+              </div>
+              <Button onClick={() => setIsCreateProjectModalOpen(true)}>
+                <Plus className="mr-2 h-4 w-4" />
+                Create Project
+              </Button>
+            </div>
+          </Card>
+        )}
+      </div>
+
+      <CreateProjectModal
+        isOpen={isCreateProjectModalOpen}
+        onClose={() => setIsCreateProjectModalOpen(false)}
+      />
+    </>
   );
 }

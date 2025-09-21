@@ -46,11 +46,17 @@ export const useCreateProject = () => {
   return useMutation({
     mutationFn: ({
       workspaceId,
-      name,
+      projectData,
     }: {
       workspaceId: string;
-      name: string;
-    }) => createProject(workspaceId, name),
+      projectData: {
+        name: string;
+        description?: string | null;
+        priority?: string;
+        projectStatus?: string;
+        dueDate?: string | null;
+      };
+    }) => createProject(workspaceId, projectData),
     onSuccess: (newProject: Project, variables) => {
       // Update the store
       addProject(newProject);
